@@ -19,6 +19,7 @@ git status
 ```
 
 If `.git` doesn't exist:
+
 ```bash
 git init
 git add .
@@ -71,6 +72,7 @@ Click **"Deploy"** to create the project
 Vercel will show you 2 options. **Choose Option 1: Nameservers** (recommended)
 
 Copy the nameservers provided:
+
 ```
 ns1.vercel-dns.com
 ns2.vercel-dns.com
@@ -88,6 +90,7 @@ ns4.vercel-dns.com
 **⏳ Wait 24-48 hours** for DNS to propagate (usually 10 mins - 2 hours)
 
 Verify DNS is live:
+
 ```bash
 nslookup activity.ashwinsi.in
 # Should show Vercel's nameservers
@@ -110,6 +113,7 @@ nslookup activity.ashwinsi.in
 Since you changed the OAuth domain, you need a new refresh token:
 
 1. Visit this URL in your browser (replace with your Client ID):
+
 ```
 https://www.strava.com/oauth/authorize?client_id=257631&response_type=code&redirect_uri=https://activity.ashwinsi.in&scope=activity:read_all
 ```
@@ -121,11 +125,12 @@ https://www.strava.com/oauth/authorize?client_id=257631&response_type=code&redir
 4. Copy the **code** from the URL
 
 5. Run in terminal:
+
 ```bash
 curl -X POST https://www.strava.com/oauth/token \
   -d client_id=257631 \
   -d client_secret=43ee27de389df79d1c70119ad9bceb07327e355a \
-  -d code=<PASTE_CODE_HERE> \
+  -d code=60b10f7576e3594522c476c48ca8ffb751b1a632 \
   -d grant_type=authorization_code
 ```
 
@@ -139,10 +144,10 @@ curl -X POST https://www.strava.com/oauth/token \
 2. Click **"Settings"** → **"Environment Variables"**
 3. Add three variables:
 
-| Name | Value |
-|------|-------|
-| `STRAVA_CLIENT_ID` | `257631` |
-| `STRAVA_CLIENT_SECRET` | Your client secret |
+| Name                   | Value                                  |
+| ---------------------- | -------------------------------------- |
+| `STRAVA_CLIENT_ID`     | `257631`                               |
+| `STRAVA_CLIENT_SECRET` | Your client secret                     |
 | `STRAVA_REFRESH_TOKEN` | Your **NEW** refresh token from Step 4 |
 
 Click **"Save"** for each variable
@@ -167,11 +172,13 @@ Click **"Save"** for each variable
 ### 6.2 Debug Endpoint
 
 If issues occur, check:
+
 ```bash
 curl https://activity.ashwinsi.in/api/debug
 ```
 
 Should return:
+
 ```json
 {
   "status": "ok",
@@ -193,6 +200,7 @@ STRAVA_REFRESH_TOKEN=your_new_refresh_token
 ```
 
 Then run:
+
 ```bash
 npm run dev
 ```
@@ -200,22 +208,26 @@ npm run dev
 ## Troubleshooting
 
 ### Domain not working
+
 - ✅ Check DNS propagated: `nslookup activity.ashwinsi.in`
 - ✅ Vercel shows green checkmark on domain
 - ✅ Wait up to 48 hours for DNS
 
 ### "Authorization Error" on /api/debug
+
 - ✅ Refresh token from Step 4.2 is wrong
 - ✅ Strava OAuth domain not updated to `activity.ashwinsi.in`
 - ✅ Environment variables not redeployed
 - ✅ Try Step 4.2 again with correct domain
 
 ### Activities not loading
+
 - ✅ Run `/api/debug` endpoint first
 - ✅ Check network tab in browser DevTools
 - ✅ Check Vercel function logs for errors
 
 ### SSL Certificate Issues
+
 - Vercel handles this automatically
 - May take a few minutes after domain is added
 - If persists, wait 24 hours for DNS propagation
@@ -223,15 +235,19 @@ npm run dev
 ## Monitoring & Updates
 
 ### View Logs
+
 1. Vercel dashboard → **"Functions"**
 2. Check API route logs for errors
 
 ### Check Deployments
+
 1. Vercel dashboard → **"Deployments"**
 2. Click latest deployment to see build output
 
 ### Update Code
+
 After making changes locally:
+
 ```bash
 git add .
 git commit -m "Update: description of changes"
@@ -257,6 +273,7 @@ Vercel automatically redeploys on push to `main`!
 ## Live!
 
 Your Strava Dashboard is now live at:
+
 ### 🚀 https://activity.ashwinsi.in
 
 Share with friends! Track activities in style! 📊🚴‍♂️🏃‍♀️

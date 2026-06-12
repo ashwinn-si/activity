@@ -22,7 +22,7 @@ export async function getAccessToken() {
   return cachedToken;
 }
 
-export async function stravaFetch(path: string, options: any = {}) {
+export async function stravaFetch(path: string, options: RequestInit = {}) {
   const token = await getAccessToken();
   const res = await fetch(`https://www.strava.com/api/v3${path}`, {
     ...options,

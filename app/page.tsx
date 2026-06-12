@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { formatDistance, formatDuration } from '@/utils/formatters';
 import { TrendingUp, Clock, Mountain, Calendar, Bike, Footprints, PersonStanding, Waves, Dumbbell, Wind, Activity, RotateCw } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const container = {
   animate: {
@@ -28,7 +29,7 @@ const item = {
 };
 
 export default function Dashboard() {
-  const { athlete, stats, activities, loading, error, fetchAll } =
+  const { athlete, activities, loading, error, fetchAll } =
     useStravaStore();
 
   const [dateRange, setDateRange] = useState<'7' | '15' | '30' | 'custom'>('7');
@@ -37,7 +38,7 @@ export default function Dashboard() {
 
   const getDateRange = () => {
     const end = new Date();
-    let start = new Date();
+    const start = new Date();
 
     if (dateRange === 'custom') {
       return { start: customStartDate, end: customEndDate };
@@ -51,9 +52,8 @@ export default function Dashboard() {
   const { start: startDate, end: endDate } = getDateRange();
 
   useEffect(() => {
-    // Always fetch fresh data when page opens
-    fetchAll(true);
-  }, []);
+    fetchAll();
+  }, [fetchAll]);
 
   const filteredActivities = useMemo(() => {
     return activities.filter(a => {
@@ -79,18 +79,18 @@ export default function Dashboard() {
           <div className="max-w-md">
             <h1 className="text-2xl font-bold mb-3">Setup Required</h1>
             <p className="text-text-secondary mb-4">{error}</p>
-            <div className="bg-surface border border-border rounded-xl p-4 mb-4">
+            <div className="glass-panel rounded-xl p-4 mb-4">
               <p className="text-sm mb-3">Steps:</p>
               <ol className="text-sm text-text-secondary space-y-2 list-decimal list-inside">
-                <li>Get Strava API credentials from <a href="https://www.strava.com/settings/api" className="text-accent-ride hover:underline">strava.com/settings/api</a></li>
-                <li>Check <code className="bg-muted px-2 py-1 rounded text-xs">GET_CREDENTIALS.md</code> for detailed instructions</li>
-                <li>Update <code className="bg-muted px-2 py-1 rounded text-xs">.env.local</code> with your credentials</li>
+                <li>Get Strava API credentials from <a href="https://www.strava.com/settings/api" className="text-accent-ride hover:underline font-semibold">strava.com/settings/api</a></li>
+                <li>Check <code className="bg-white/5 border border-white/5 px-2 py-1 rounded text-xs">GET_CREDENTIALS.md</code> for detailed instructions</li>
+                <li>Update <code className="bg-white/5 border border-white/5 px-2 py-1 rounded text-xs">.env.local</code> with your credentials</li>
                 <li>Restart the dev server</li>
               </ol>
             </div>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-accent-ride text-white rounded-lg text-sm hover:opacity-90"
+              className="px-5 py-2.5 bg-accent-ride/20 text-text-primary border border-accent-ride/30 rounded-xl text-sm font-medium hover:bg-accent-ride/30 transition-all duration-300 shadow-sm"
             >
               Retry
             </button>
@@ -125,17 +125,20 @@ export default function Dashboard() {
             ) : null}
           </div>
 
-          {/* Refresh Button */}
-          <button
-            onClick={() => fetchAll(true)}
-            disabled={loading}
-            className="p-2 rounded-lg border border-border text-text-secondary hover:text-text-primary hover:border-accent-ride disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            title="Refresh data from Strava"
-          >
-            <RotateCw
-              className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`}
-            />
-          </button>
+          {/* Refresh Button & Theme Toggle */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => fetchAll()}
+              disabled={loading}
+              className="p-2.5 rounded-xl border border-white/5 bg-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 hover:border-accent-ride/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+              title="Refresh data from Strava"
+            >
+              <RotateCw
+                className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`}
+              />
+            </button>
+            <ThemeToggle />
+          </div>
         </div>
 
         {/* Date Range Selector */}
@@ -145,21 +148,21 @@ export default function Dashboard() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
           >
-            <div className="bg-surface border border-border rounded-2xl p-4">
+            <div className="glass-panel rounded-2xl p-4">
               <div className="flex items-center gap-3 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-text-secondary" />
-                  <span className="text-sm text-text-secondary">Period:</span>
+                <div className="flex items-center gap-2 mr-1">
+                  <Calendar className="w-4 h-4 text-accent-ride/80" />
+                  <span className="text-sm font-medium text-text-secondary">Period:</span>
                 </div>
 
                 {(['7', '15', '30'] as const).map(days => (
                   <button
                     key={days}
                     onClick={() => setDateRange(days as '7' | '15' | '30')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
                       dateRange === days
-                        ? 'bg-accent-ride text-white'
-                        : 'bg-muted text-text-secondary hover:text-text-primary'
+                        ? 'bg-accent-ride/25 text-text-primary border border-accent-ride/40 shadow-sm'
+                        : 'bg-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 border border-transparent'
                     }`}
                   >
                     Last {days} days
@@ -168,10 +171,10 @@ export default function Dashboard() {
 
                 <button
                   onClick={() => setDateRange('custom')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
                     dateRange === 'custom'
-                      ? 'bg-accent-ride text-white'
-                      : 'bg-muted text-text-secondary hover:text-text-primary'
+                      ? 'bg-accent-ride/25 text-text-primary border border-accent-ride/40 shadow-sm'
+                      : 'bg-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 border border-transparent'
                   }`}
                 >
                   Custom
@@ -183,20 +186,20 @@ export default function Dashboard() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="mt-4 pt-4 border-t border-border flex gap-3"
+                  className="mt-4 pt-4 border-t border-white/5 flex items-center gap-3"
                 >
                   <input
                     type="date"
                     value={customStartDate.toISOString().split('T')[0]}
                     onChange={(e) => setCustomStartDate(new Date(e.target.value))}
-                    className="px-3 py-2 bg-muted text-text-primary rounded-lg text-sm border border-border focus:outline-none"
+                    className="px-3 py-2 bg-white/5 text-text-primary rounded-xl text-sm border border-white/5 focus:outline-none focus:border-accent-ride/40 transition-colors"
                   />
-                  <span className="text-text-secondary">to</span>
+                  <span className="text-text-secondary text-sm">to</span>
                   <input
                     type="date"
                     value={customEndDate.toISOString().split('T')[0]}
                     onChange={(e) => setCustomEndDate(new Date(e.target.value))}
-                    className="px-3 py-2 bg-muted text-text-primary rounded-lg text-sm border border-border focus:outline-none"
+                    className="px-3 py-2 bg-white/5 text-text-primary rounded-xl text-sm border border-white/5 focus:outline-none focus:border-accent-ride/40 transition-colors"
                   />
                 </motion.div>
               )}
@@ -230,7 +233,7 @@ export default function Dashboard() {
                   <motion.div
                     key={type}
                     variants={item}
-                    className="bg-surface border border-border rounded-xl p-4 flex items-center gap-4"
+                    className="glass-panel glass-panel-hover rounded-xl p-4 flex items-center gap-4"
                   >
                     {icon}
                     <span className="font-semibold min-w-20">{type}</span>

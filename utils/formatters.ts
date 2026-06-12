@@ -27,7 +27,7 @@ export const formatPacePerKm = (mps: number) => {
 export const formatSpeed = (mps: number) =>
   `${(mps * 3.6).toFixed(1)} km/h`;
 
-export const sportMeta: any = {
+export const sportMeta: Record<string, { icon: string; color: string; bg: string }> = {
   Run: {
     icon: 'Footprints',
     color: 'text-accent-run',

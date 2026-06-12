@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 
 interface ChartProps {
-  data: any[];
+  data: { time: number; distance: number }[];
 }
 
 export function ProgressChart({ data }: ChartProps) {
@@ -44,8 +44,8 @@ export function ProgressChart({ data }: ChartProps) {
               backgroundColor: '#1a1a1a',
               border: '1px solid #262626',
             }}
-            formatter={(value: any) => [
-              typeof value === 'number' ? value.toFixed(1) : value,
+            formatter={(value: unknown) => [
+              typeof value === 'number' ? value.toFixed(1) : String(value ?? ''),
               'Distance (km)',
             ]}
             labelFormatter={(label) => `${label} mins`}

@@ -6,7 +6,6 @@ import useStravaStore from '@/store/useStravaStore';
 import { ActivityCard } from '@/components/cards/ActivityCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { Badge } from '@/components/ui/Badge';
 import { Filter, ChevronLeft, ChevronRight, RotateCw } from 'lucide-react';
 
 const container = {
@@ -35,9 +34,8 @@ export default function ActivitiesPage() {
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
-    // Always fetch fresh data when page opens
-    fetchAll(true);
-  }, []);
+    fetchAll();
+  }, [fetchAll]);
 
   const filteredActivities = useMemo(() => {
     let filtered = activities;
@@ -67,10 +65,17 @@ export default function ActivitiesPage() {
 
   const sportTypes = [...new Set(activities.map((a) => a.type))];
 
-  // Reset to page 1 when filter/sort changes
-  useEffect(() => {
+  // Helper function to update sport filter and reset page index to 1
+  const handleSportFilterChange = (sport: string | null) => {
+    setSportFilter(sport);
     setCurrentPage(1);
-  }, [sportFilter, sortBy]);
+  };
+
+  // Helper function to update sort and reset page index to 1
+  const handleSortChange = (newSortBy: 'date' | 'distance' | 'elevation') => {
+    setSortBy(newSortBy);
+    setCurrentPage(1);
+  };
 
   if (error) {
     return (
@@ -86,9 +91,9 @@ export default function ActivitiesPage() {
         <div className="flex items-center justify-between mb-6 gap-4">
           <h1 className="text-3xl font-bold tracking-tight">Activities</h1>
           <button
-            onClick={() => fetchAll(true)}
+            onClick={() => fetchAll()}
             disabled={loading}
-            className="p-2 rounded-lg border border-border text-text-secondary hover:text-text-primary hover:border-accent-ride disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-2.5 rounded-xl border border-white/5 bg-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 hover:border-accent-ride/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
             title="Refresh activities from Strava"
           >
             <RotateCw
@@ -102,20 +107,20 @@ export default function ActivitiesPage() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 bg-surface border border-border rounded-2xl p-4"
+            className="mb-6 glass-panel rounded-2xl p-4"
           >
             <div className="flex items-center gap-4 flex-wrap">
-              <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-text-secondary" />
-                <span className="text-sm text-text-secondary">Sport:</span>
+              <div className="flex items-center gap-2 mr-1">
+                <Filter className="w-4 h-4 text-accent-ride/80" />
+                <span className="text-sm font-medium text-text-secondary">Sport:</span>
               </div>
 
               <button
-                onClick={() => setSportFilter(null)}
-                className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+                onClick={() => handleSportFilterChange(null)}
+                className={`px-4 py-1.5 rounded-xl text-sm font-medium transition-all duration-300 ${
                   sportFilter === null
-                    ? 'bg-accent-ride text-white'
-                    : 'bg-muted text-text-secondary hover:text-text-primary'
+                    ? 'bg-accent-ride/25 text-text-primary border border-accent-ride/40 shadow-sm'
+                    : 'bg-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 border border-transparent'
                 }`}
               >
                 All
@@ -124,11 +129,11 @@ export default function ActivitiesPage() {
               {sportTypes.map((sport) => (
                 <button
                   key={sport}
-                  onClick={() => setSportFilter(sport)}
-                  className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+                  onClick={() => handleSportFilterChange(sport)}
+                  className={`px-4 py-1.5 rounded-xl text-sm font-medium transition-all duration-300 ${
                     sportFilter === sport
-                      ? 'bg-accent-ride text-white'
-                      : 'bg-muted text-text-secondary hover:text-text-primary'
+                      ? 'bg-accent-ride/25 text-text-primary border border-accent-ride/40 shadow-sm'
+                      : 'bg-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 border border-transparent'
                   }`}
                 >
                   {sport}
@@ -136,15 +141,15 @@ export default function ActivitiesPage() {
               ))}
 
               <div className="ml-auto flex items-center gap-2">
-                <span className="text-sm text-text-secondary">Sort:</span>
+                <span className="text-sm font-medium text-text-secondary">Sort:</span>
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="bg-muted text-text-primary rounded-lg px-3 py-1 text-sm border border-border focus:outline-none"
+                  onChange={(e) => handleSortChange(e.target.value as 'date' | 'distance' | 'elevation')}
+                  className="bg-white/5 text-text-primary rounded-xl px-3 py-1.5 text-sm border border-white/5 focus:outline-none focus:border-accent-ride/40 transition-colors"
                 >
-                  <option value="date">Latest</option>
-                  <option value="distance">Distance</option>
-                  <option value="elevation">Elevation</option>
+                  <option value="date" className="bg-[#0B0F19]">Latest</option>
+                  <option value="distance" className="bg-[#0B0F19]">Distance</option>
+                  <option value="elevation" className="bg-[#0B0F19]">Elevation</option>
                 </select>
               </div>
             </div>
@@ -183,20 +188,20 @@ export default function ActivitiesPage() {
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="p-2 rounded-lg border border-border text-text-secondary hover:text-text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="p-2.5 rounded-xl border border-white/5 bg-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 disabled:opacity-40 disabled:bg-transparent disabled:border-transparent disabled:cursor-not-allowed transition-all duration-300"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                      className={`px-3.5 py-1.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
                         currentPage === page
-                          ? 'bg-accent-ride text-white'
-                          : 'bg-muted text-text-secondary hover:text-text-primary'
+                          ? 'bg-accent-ride/25 text-text-primary border border-accent-ride/40 shadow-sm'
+                          : 'bg-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 border border-transparent'
                       }`}
                     >
                       {page}
@@ -207,7 +212,7 @@ export default function ActivitiesPage() {
                 <button
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg border border-border text-text-secondary hover:text-text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="p-2.5 rounded-xl border border-white/5 bg-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 disabled:opacity-40 disabled:bg-transparent disabled:border-transparent disabled:cursor-not-allowed transition-all duration-300"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>

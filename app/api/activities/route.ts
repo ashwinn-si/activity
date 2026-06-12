@@ -11,9 +11,9 @@ export async function GET(request: Request) {
       `/athlete/activities?page=${page}&per_page=${perPage}`
     );
     return NextResponse.json(activities);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message },
+      { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

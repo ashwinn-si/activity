@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { formatDistance, formatDuration, formatSpeed, formatPace, formatPacePerKm } from '@/utils/formatters';
+import { formatDistance, formatDuration, formatSpeed, formatPacePerKm } from '@/utils/formatters';
 import { PaceChart } from '@/components/charts/PaceChart';
 import { HeartRateChart } from '@/components/charts/HeartRateChart';
 import { ElevationChart } from '@/components/charts/ElevationChart';
@@ -11,7 +11,7 @@ import { ProgressChart } from '@/components/charts/ProgressChart';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
-import { ArrowLeft, Heart, Mountain } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 interface Activity {
@@ -27,11 +27,23 @@ interface Activity {
   max_speed: number;
   average_heartrate?: number;
   max_heartrate?: number;
-  [key: string]: any;
+  [key: string]: unknown;
+}
+
+interface StreamData {
+  data: number[];
+  original_size?: number;
+  resolution?: string;
+  series_type?: string;
 }
 
 interface Streams {
-  [key: string]: any;
+  distance?: StreamData;
+  time?: StreamData;
+  heartrate?: StreamData;
+  altitude?: StreamData;
+  velocity_smooth?: StreamData;
+  [key: string]: StreamData | undefined;
 }
 
 const container = {
@@ -69,8 +81,8 @@ export default function ActivityDetailPage() {
         const data = await res.json();
         setActivity(data.activity);
         setStreams(data.streams);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : String(err));
       } finally {
         setLoading(false);
       }
@@ -109,7 +121,7 @@ export default function ActivityDetailPage() {
     );
   }
 
-  const sportColors: any = {
+  const sportColors: Record<string, 'default' | 'run' | 'ride' | 'walk' | 'pr'> = {
     Run: 'run',
     Ride: 'ride',
     Walk: 'walk',
@@ -120,7 +132,7 @@ export default function ActivityDetailPage() {
       <div className="px-4 md:px-8 lg:px-12 py-6 lg:py-8">
         {/* Back Button */}
         <Link href="/activities">
-          <button className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors mb-6">
+          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 transition-all duration-300 mb-6 text-sm font-medium">
             <ArrowLeft className="w-4 h-4" />
             Back to Activities
           </button>
@@ -189,12 +201,12 @@ export default function ActivityDetailPage() {
               value: `${Math.round(activity.max_heartrate)} bpm`,
             },
           ]
-            .filter(Boolean)
-            .map((stat: any, idx) => (
+            .filter((s): s is { label: string; value: string } => !!s)
+            .map((stat, idx) => (
               <motion.div
                 key={idx}
                 variants={item}
-                className="bg-surface border border-border rounded-2xl p-4"
+                className="glass-panel rounded-2xl p-4"
               >
                 <p className="text-xs uppercase tracking-wider text-text-secondary mb-2">
                   {stat.label}
@@ -207,7 +219,11 @@ export default function ActivityDetailPage() {
         </motion.div>
 
         {/* Charts */}
-        {streams && streams.distance?.data && streams.time?.data && streams.distance.data.length > 0 && (
+        {streams && streams.distance?.data && streams.time?.data && streams.distance.data.length > 0 && (() => {
+          const distData = streams.distance.data;
+          const timeData = streams.time.data;
+          const downsample = Math.ceil(distData.length / 100);
+          return (
           <motion.div
             className="space-y-6"
             variants={container}
@@ -218,12 +234,12 @@ export default function ActivityDetailPage() {
             <motion.div variants={item}>
               <ProgressChart
                 data={
-                  streams.distance.data
+                  distData
                     .map((d: number, i: number) => ({
-                      time: Math.round((streams.time?.data[i] || 0) / 60), // Convert to minutes
-                      distance: (d / 1000).toFixed(2), // Convert to km
+                      time: Math.round((timeData[i] || 0) / 60), // Convert to minutes
+                      distance: Number((d / 1000).toFixed(2)), // Convert to km
                     }))
-                    .filter((_: any, i: number) => i % Math.ceil(streams.distance.data.length / 100) === 0) || []
+                    .filter((_: unknown, i: number) => i % downsample === 0) || []
                 }
               />
             </motion.div>
@@ -232,13 +248,13 @@ export default function ActivityDetailPage() {
               <motion.div variants={item}>
                 <PaceChart
                   data={
-                    streams.distance.data
-                      .map((d: number, i: number) => ({
-                        distance: (d / 1000).toFixed(1),
-                        pace: streams.velocity_smooth?.data[i] || 0,
-                      }))
-                      .filter((_: any, i: number) => i % Math.ceil(streams.distance.data.length / 100) === 0) || []
-                  }
+                  distData
+                    .map((d: number, i: number) => ({
+                      distance: Number((d / 1000).toFixed(1)),
+                      pace: streams.velocity_smooth?.data[i] || 0,
+                    }))
+                    .filter((_: unknown, i: number) => i % downsample === 0) || []
+                }
                 />
               </motion.div>
             )}
@@ -247,13 +263,13 @@ export default function ActivityDetailPage() {
               <motion.div variants={item}>
                 <HeartRateChart
                   data={
-                    streams.distance.data
-                      .map((d: number, i: number) => ({
-                        distance: (d / 1000).toFixed(1),
-                        heartrate: streams.heartrate?.data[i] || 0,
-                      }))
-                      .filter((_: any, i: number) => i % Math.ceil(streams.distance.data.length / 100) === 0) || []
-                  }
+                  distData
+                    .map((d: number, i: number) => ({
+                      distance: Number((d / 1000).toFixed(1)),
+                      heartrate: streams.heartrate?.data[i] || 0,
+                    }))
+                    .filter((_: unknown, i: number) => i % downsample === 0) || []
+                }
                 />
               </motion.div>
             )}
@@ -262,18 +278,19 @@ export default function ActivityDetailPage() {
               <motion.div variants={item}>
                 <ElevationChart
                   data={
-                    streams.distance.data
-                      .map((d: number, i: number) => ({
-                        distance: (d / 1000).toFixed(1),
-                        altitude: streams.altitude?.data[i] || 0,
-                      }))
-                      .filter((_: any, i: number) => i % Math.ceil(streams.distance.data.length / 100) === 0) || []
-                  }
+                  distData
+                    .map((d: number, i: number) => ({
+                      distance: Number((d / 1000).toFixed(1)),
+                      altitude: streams.altitude?.data[i] || 0,
+                    }))
+                    .filter((_: unknown, i: number) => i % downsample === 0) || []
+                }
                 />
               </motion.div>
             )}
           </motion.div>
-        )}
+          );
+        })()}
       </div>
     </main>
   );

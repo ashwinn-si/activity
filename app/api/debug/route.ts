@@ -52,9 +52,9 @@ export async function GET() {
       message: 'Token refresh successful',
       token_expires_in: data.expires_in,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { status: 'error', message: error.message },
+      { status: 'error', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

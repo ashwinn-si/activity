@@ -30,7 +30,7 @@ const getCache = (key: string) => {
   }
 };
 
-const setCache = (key: string, data: any) => {
+const setCache = (key: string, data: unknown) => {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
@@ -60,7 +60,7 @@ interface Activity {
   average_heartrate?: number;
   max_heartrate?: number;
   polyline?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface Athlete {
@@ -73,7 +73,7 @@ interface Athlete {
   profile_medium?: string;
   profile?: string;
   created_at: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface Stats {
@@ -117,7 +117,7 @@ interface Stats {
     moving_time: number;
     elevation_gain: number;
   };
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface StravaState {
@@ -209,8 +209,8 @@ const useStravaStore = create<StravaState>((set) => ({
         activities: Array.isArray(activResponse) ? activResponse : [],
         error: null,
       });
-    } catch (e: any) {
-      set({ error: e.message });
+    } catch (e: unknown) {
+      set({ error: e instanceof Error ? e.message : 'Unknown error' });
     } finally {
       set({ loading: false });
     }

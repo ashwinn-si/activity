@@ -27,11 +27,11 @@ const item = {
 };
 
 export default function StatsPage() {
-  const { athlete, stats, loading, error, fetchAll } = useStravaStore();
+  const { stats, loading, error, fetchAll } = useStravaStore();
 
   useEffect(() => {
     fetchAll();
-  }, []);
+  }, [fetchAll]);
 
   if (error) {
     return (

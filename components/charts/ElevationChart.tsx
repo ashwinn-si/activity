@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 
 interface ChartProps {
-  data: any[];
+  data: { distance: number; altitude: number }[];
 }
 
 export function ElevationChart({ data }: ChartProps) {
@@ -22,7 +22,7 @@ export function ElevationChart({ data }: ChartProps) {
       animate={{ opacity: 1, scaleY: 1 }}
       transition={{ duration: 0.45 }}
       style={{ transformOrigin: 'bottom' }}
-      className="bg-surface border border-border rounded-2xl p-6"
+      className="glass-panel rounded-2xl p-6"
     >
       <h3 className="text-lg font-semibold text-text-primary mb-4">
         Elevation Profile

@@ -6,9 +6,9 @@ export async function GET() {
     const athlete = await stravaFetch('/athlete');
     const stats = await stravaFetch(`/athletes/${athlete.id}/stats`);
     return NextResponse.json({ athlete, stats });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message },
+      { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
