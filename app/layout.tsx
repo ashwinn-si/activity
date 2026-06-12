@@ -22,6 +22,9 @@ export const metadata: Metadata = {
   keywords: ["Strava", "fitness tracking", "activity dashboard", "cycling", "running", "athletic activities", "performance analytics"],
   authors: [{ name: "Ashwin" }],
   creator: "Ashwin",
+  icons: {
+    icon: "/logo.png",
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
