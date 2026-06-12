@@ -1,24 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useLayoutEffect } from 'react';
 import { Sun, Moon } from 'lucide-react';
 import useThemeStore from '@/store/useThemeStore';
 
 export default function ThemeToggle() {
-  const [mounted, setMounted] = useState(false);
   const { isDark, toggleTheme } = useThemeStore();
 
-  useEffect(() => {
-    setMounted(true);
+  useLayoutEffect(() => {
     const saved = localStorage.getItem('theme');
-    if (saved === 'dark') {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-      document.documentElement.setAttribute('data-theme', 'light');
-    }
+    const theme = saved || 'light';
+    document.documentElement.setAttribute('data-theme', theme);
   }, []);
-
-  if (!mounted) return null;
 
   return (
     <button
