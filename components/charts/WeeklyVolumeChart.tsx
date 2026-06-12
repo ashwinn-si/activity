@@ -25,17 +25,41 @@ export function WeeklyVolumeChart({ data }: ChartProps) {
       style={{ transformOrigin: 'bottom' }}
       className="glass-panel rounded-2xl p-6"
     >
-      <h3 className="text-lg font-semibold text-text-primary mb-4">Weekly Volume</h3>
+      <div className="mb-4 flex items-end justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-semibold text-text-primary">Weekly Volume</h3>
+          <p className="mt-1 text-sm text-text-secondary">Distance per week by activity type.</p>
+        </div>
+      </div>
       <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-          <XAxis dataKey="name" stroke="#6b7280" />
-          <YAxis stroke="#6b7280" />
-          <Tooltip />
-          <Legend />
-          <Bar dataKey="Ride" stackId="a" fill="#f97316" />
-          <Bar dataKey="Run" stackId="a" fill="#3b82f6" />
-          <Bar dataKey="Walk" stackId="a" fill="#22c55e" />
+        <BarChart data={data} margin={{ top: 10, right: 24, left: 0, bottom: 8 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.65} />
+          <XAxis
+            dataKey="name"
+            stroke="var(--text-secondary)"
+            tickLine={false}
+            axisLine={false}
+            tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+          />
+          <YAxis
+            stroke="var(--text-secondary)"
+            tickLine={false}
+            axisLine={false}
+            tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+          />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: 'var(--tooltip-background)',
+              border: '1px solid var(--tooltip-border)',
+              borderRadius: '12px',
+              boxShadow: 'var(--tooltip-shadow)',
+            }}
+            cursor={{ fill: 'var(--border)', opacity: 0.4 }}
+          />
+          <Legend wrapperStyle={{ paddingTop: '16px' }} iconType="square" iconSize={10} />
+          <Bar dataKey="Ride" stackId="a" fill="var(--accent-ride)" radius={[0, 0, 0, 0]} />
+          <Bar dataKey="Run" stackId="a" fill="var(--accent-run)" radius={[0, 0, 0, 0]} />
+          <Bar dataKey="Walk" stackId="a" fill="var(--accent-walk)" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </motion.div>
