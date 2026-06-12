@@ -1,0 +1,280 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { formatDistance, formatDuration, formatSpeed, formatPace, formatPacePerKm } from '@/utils/formatters';
+import { PaceChart } from '@/components/charts/PaceChart';
+import { HeartRateChart } from '@/components/charts/HeartRateChart';
+import { ElevationChart } from '@/components/charts/ElevationChart';
+import { ProgressChart } from '@/components/charts/ProgressChart';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { Badge } from '@/components/ui/Badge';
+import { ArrowLeft, Heart, Mountain } from 'lucide-react';
+import Link from 'next/link';
+
+interface Activity {
+  id: number;
+  name: string;
+  type: string;
+  distance: number;
+  moving_time: number;
+  elapsed_time: number;
+  elevation_gain: number;
+  start_date: string;
+  average_speed: number;
+  max_speed: number;
+  average_heartrate?: number;
+  max_heartrate?: number;
+  [key: string]: any;
+}
+
+interface Streams {
+  [key: string]: any;
+}
+
+const container = {
+  animate: {
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const item = {
+  initial: { opacity: 0, y: 20 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35 },
+  },
+};
+
+export default function ActivityDetailPage() {
+  const params = useParams();
+  const id = params.id as string;
+
+  const [activity, setActivity] = useState<Activity | null>(null);
+  const [streams, setStreams] = useState<Streams | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchActivity = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/activities/${id}`);
+        if (!res.ok) throw new Error('Failed to fetch activity');
+        const data = await res.json();
+        setActivity(data.activity);
+        setStreams(data.streams);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchActivity();
+  }, [id]);
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <EmptyState title="Error loading activity" description={error} />
+      </div>
+    );
+  }
+
+  if (loading || !activity) {
+    return (
+      <main className="flex-1 overflow-auto pb-20 lg:pb-6">
+        <div className="px-4 md:px-8 lg:px-12 py-6 lg:py-8">
+          <Skeleton className="h-10 w-12 mb-4" />
+          <Skeleton className="h-12 w-64 mb-2" />
+          <Skeleton className="h-4 w-48 mb-8" />
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Skeleton key={i} className="h-24" />
+            ))}
+          </div>
+          <div className="space-y-6">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-80" />
+            ))}
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const sportColors: any = {
+    Run: 'run',
+    Ride: 'ride',
+    Walk: 'walk',
+  };
+
+  return (
+    <main className="flex-1 overflow-auto pb-20 lg:pb-6">
+      <div className="px-4 md:px-8 lg:px-12 py-6 lg:py-8">
+        {/* Back Button */}
+        <Link href="/activities">
+          <button className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors mb-6">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Activities
+          </button>
+        </Link>
+
+        {/* Hero */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight mb-2">
+                {activity.name}
+              </h1>
+              <p className="text-text-secondary">
+                {new Date(activity.start_date).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </p>
+            </div>
+            <Badge variant={sportColors[activity.type]}>{activity.type}</Badge>
+          </div>
+        </motion.div>
+
+        {/* Key Stats Grid */}
+        <motion.div
+          className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8"
+          variants={container}
+          initial="initial"
+          animate="animate"
+        >
+          {[
+            {
+              label: 'Distance',
+              value: formatDistance(activity.distance),
+            },
+            {
+              label: 'Moving Time',
+              value: formatDuration(activity.moving_time),
+            },
+            {
+              label: 'Avg Time per km',
+              value: formatPacePerKm(activity.average_speed),
+            },
+            {
+              label: activity.type === 'Run' ? 'Avg Speed' : 'Avg Speed',
+              value: formatSpeed(activity.average_speed),
+            },
+            {
+              label: 'Max Speed',
+              value: formatSpeed(activity.max_speed),
+            },
+            activity.average_heartrate && {
+              label: 'Avg Heart Rate',
+              value: `${Math.round(activity.average_heartrate)} bpm`,
+            },
+            activity.max_heartrate && {
+              label: 'Max Heart Rate',
+              value: `${Math.round(activity.max_heartrate)} bpm`,
+            },
+          ]
+            .filter(Boolean)
+            .map((stat: any, idx) => (
+              <motion.div
+                key={idx}
+                variants={item}
+                className="bg-surface border border-border rounded-2xl p-4"
+              >
+                <p className="text-xs uppercase tracking-wider text-text-secondary mb-2">
+                  {stat.label}
+                </p>
+                <p className="text-2xl font-mono font-semibold">
+                  {stat.value}
+                </p>
+              </motion.div>
+            ))}
+        </motion.div>
+
+        {/* Charts */}
+        {streams && streams.distance?.data && streams.time?.data && streams.distance.data.length > 0 && (
+          <motion.div
+            className="space-y-6"
+            variants={container}
+            initial="initial"
+            animate="animate"
+          >
+            {/* Progress Chart - Distance vs Time */}
+            <motion.div variants={item}>
+              <ProgressChart
+                data={
+                  streams.distance.data
+                    .map((d: number, i: number) => ({
+                      time: Math.round((streams.time?.data[i] || 0) / 60), // Convert to minutes
+                      distance: (d / 1000).toFixed(2), // Convert to km
+                    }))
+                    .filter((_: any, i: number) => i % Math.ceil(streams.distance.data.length / 100) === 0) || []
+                }
+              />
+            </motion.div>
+
+            {streams.velocity_smooth?.data && (
+              <motion.div variants={item}>
+                <PaceChart
+                  data={
+                    streams.distance.data
+                      .map((d: number, i: number) => ({
+                        distance: (d / 1000).toFixed(1),
+                        pace: streams.velocity_smooth?.data[i] || 0,
+                      }))
+                      .filter((_: any, i: number) => i % Math.ceil(streams.distance.data.length / 100) === 0) || []
+                  }
+                />
+              </motion.div>
+            )}
+
+            {streams.heartrate?.data && streams.heartrate.data.length > 0 && (
+              <motion.div variants={item}>
+                <HeartRateChart
+                  data={
+                    streams.distance.data
+                      .map((d: number, i: number) => ({
+                        distance: (d / 1000).toFixed(1),
+                        heartrate: streams.heartrate?.data[i] || 0,
+                      }))
+                      .filter((_: any, i: number) => i % Math.ceil(streams.distance.data.length / 100) === 0) || []
+                  }
+                />
+              </motion.div>
+            )}
+
+            {streams.altitude?.data && streams.altitude.data.length > 0 && (
+              <motion.div variants={item}>
+                <ElevationChart
+                  data={
+                    streams.distance.data
+                      .map((d: number, i: number) => ({
+                        distance: (d / 1000).toFixed(1),
+                        altitude: streams.altitude?.data[i] || 0,
+                      }))
+                      .filter((_: any, i: number) => i % Math.ceil(streams.distance.data.length / 100) === 0) || []
+                  }
+                />
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+      </div>
+    </main>
+  );
+}
