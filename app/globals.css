@@ -1,35 +1,45 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
   color-scheme: light;
   --background: #ffffff; /* White */
-  --surface: #f5f5f5;    /* Light Gray */
-  --border: #e5e5e5;     /* Light Border */
-  --muted: #f0f0f0;      /* Light Muted */
+  --surface: #f5f5f5; /* Light Gray */
+  --border: #e5e5e5; /* Light Border */
+  --muted: #f0f0f0; /* Light Muted */
   --text-primary: #1f1f1f; /* Dark Text */
   --text-secondary: #666666; /* Medium Gray */
   --text-muted: #999999;
+  --tooltip-background: rgba(255, 255, 255, 0.96);
+  --tooltip-border: var(--border);
+  --tooltip-text: var(--text-primary);
+  --tooltip-label: var(--text-secondary);
+  --tooltip-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
 
   /* Accent colors matching purple/indigo theme */
-  --accent-ride: #8B5CF6; /* Vivid Purple */
-  --accent-run: #6366F1;  /* Vivid Indigo */
-  --accent-walk: #2DD4BF; /* Mint/Teal - goes perfectly with purple/indigo */
-  --accent-pr: #C084FC;   /* Light Purple */
+  --accent-ride: #8b5cf6; /* Vivid Purple */
+  --accent-run: #6366f1; /* Vivid Indigo */
+  --accent-walk: #2dd4bf; /* Mint/Teal - goes perfectly with purple/indigo */
+  --accent-pr: #c084fc; /* Light Purple */
   --strava: #fc4c02;
 
-  --color-primary: #8B5CF6;
-  --color-secondary: #6366F1;
+  --color-primary: #8b5cf6;
+  --color-secondary: #6366f1;
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --background: #0B0F19; /* Deep Blue-Black */
-  --surface: #0F1424;    /* Deep Navy */
-  --border: #1A2238;     /* Navy Gray */
-  --muted: #242F4D;      /* Lighter Navy/Gray for inputs */
-  --text-primary: #F1F5F9; /* Soft White */
-  --text-secondary: #94A3B8; /* Slate / Muted Silver */
-  --text-muted: #64748B;
+  --background: #0b0f19; /* Deep Blue-Black */
+  --surface: #0f1424; /* Deep Navy */
+  --border: #1a2238; /* Navy Gray */
+  --muted: #242f4d; /* Lighter Navy/Gray for inputs */
+  --text-primary: #f1f5f9; /* Soft White */
+  --text-secondary: #94a3b8; /* Slate / Muted Silver */
+  --text-muted: #64748b;
+  --tooltip-background: rgba(15, 20, 36, 0.96);
+  --tooltip-border: rgba(255, 255, 255, 0.08);
+  --tooltip-text: var(--text-primary);
+  --tooltip-label: var(--text-secondary);
+  --tooltip-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
 }
 
 @theme inline {
@@ -40,7 +50,7 @@
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
-  
+
   --color-accent-ride: var(--accent-ride);
   --color-accent-run: var(--accent-run);
   --color-accent-walk: var(--accent-walk);
@@ -51,7 +61,7 @@
 body {
   background: var(--background);
   color: var(--text-primary);
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
 }
 
 /* Premium Scrollbar Customization */
@@ -73,7 +83,7 @@ body {
 /* Custom Text Highlight */
 ::selection {
   background: rgba(139, 92, 246, 0.25);
-  color: #F1F5F9;
+  color: #f1f5f9;
 }
 
 /* Light mode glassmorphism */
@@ -132,7 +142,8 @@ body {
 
 /* Float Glow Orbs Animations */
 @keyframes float-slow-1 {
-  0%, 100% {
+  0%,
+  100% {
     transform: translate(0px, 0px) scale(1);
   }
   33% {
@@ -144,7 +155,8 @@ body {
 }
 
 @keyframes float-slow-2 {
-  0%, 100% {
+  0%,
+  100% {
     transform: translate(0px, 0px) scale(1);
   }
   50% {
@@ -158,4 +170,24 @@ body {
 
 .animate-float-2 {
   animation: float-slow-2 30s infinite ease-in-out;
+}
+
+/* Recharts tooltip theme overrides */
+.recharts-default-tooltip {
+  background-color: var(--tooltip-background) !important;
+  border: 1px solid var(--tooltip-border) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--tooltip-shadow) !important;
+  color: var(--tooltip-text) !important;
+}
+
+.recharts-default-tooltip .recharts-tooltip-label {
+  color: var(--tooltip-label) !important;
+}
+
+.recharts-default-tooltip .recharts-tooltip-item,
+.recharts-default-tooltip .recharts-tooltip-item-name,
+.recharts-default-tooltip .recharts-tooltip-item-separator,
+.recharts-default-tooltip .recharts-tooltip-item-value {
+  color: var(--tooltip-text) !important;
 }

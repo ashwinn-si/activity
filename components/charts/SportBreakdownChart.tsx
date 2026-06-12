@@ -22,9 +22,7 @@ export function SportBreakdownChart({ data }: ChartProps) {
       style={{ transformOrigin: 'bottom' }}
       className="glass-panel rounded-2xl p-6"
     >
-      <h3 className="text-lg font-semibold text-text-primary mb-4">
-        Sport Breakdown
-      </h3>
+      <h3 className="text-lg font-semibold text-text-primary mb-4">Sport Breakdown</h3>
       <ResponsiveContainer width="100%" height={300}>
         <PieChart>
           <Pie
@@ -37,16 +35,14 @@ export function SportBreakdownChart({ data }: ChartProps) {
             fill="#8884d8"
             dataKey="value"
           >
-            {data.map((entry) => (
-              <Cell key={`cell-${entry.name}`} fill={COLORS[entry.name as keyof typeof COLORS] || '#666'} />
+            {data.map(entry => (
+              <Cell
+                key={`cell-${entry.name}`}
+                fill={COLORS[entry.name as keyof typeof COLORS] || '#666'}
+              />
             ))}
           </Pie>
-          <Tooltip
-            contentStyle={{
-              backgroundColor: '#1a1a1a',
-              border: '1px solid #262626',
-            }}
-          />
+          <Tooltip />
           <Legend />
         </PieChart>
       </ResponsiveContainer>
