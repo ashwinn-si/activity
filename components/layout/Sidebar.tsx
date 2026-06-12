@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Activity, TrendingUp, Home } from 'lucide-react';
+import { Activity, TrendingUp, Home } from 'lucide-react';
 
 const navItems = [
   { href: '/', icon: Home, label: 'Dashboard' },
@@ -15,14 +16,14 @@ export function Sidebar() {
 
   return (
     <aside className="hidden lg:flex flex-col w-64 glass-nav p-6 z-20">
-      <div className="mb-8 flex items-center gap-3">
-        <div className="p-2 rounded-xl bg-accent-ride/10 border border-accent-ride/20 shadow-[0_0_15px_rgba(139,92,246,0.15)]">
-          <BarChart3 className="w-6 h-6 text-accent-ride" />
+      <Link href="/" className="mb-8 flex items-center gap-3 group">
+        <div className="p-2 rounded-xl bg-accent-ride/10 border border-accent-ride/20 shadow-[0_0_15px_rgba(139,92,246,0.15)] group-hover:shadow-[0_0_20px_rgba(139,92,246,0.25)] transition-all">
+          <Image src="/logo.png" alt="Strava Hub Logo" width={24} height={24} className="w-6 h-6" />
         </div>
         <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-text-primary to-text-secondary bg-clip-text text-transparent">
           Strava Hub
         </span>
-      </div>
+      </Link>
 
       <nav className="flex-1 space-y-2">
         {navItems.map((item) => {

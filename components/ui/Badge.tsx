@@ -13,10 +13,10 @@ export function Badge({
 }: BadgeProps) {
   const variants = {
     default: 'bg-muted text-text-secondary',
-    run: 'bg-blue-500/10 text-accent-run',
-    ride: 'bg-orange-500/10 text-accent-ride',
-    walk: 'bg-green-500/10 text-accent-walk',
-    pr: 'bg-purple-500/10 text-accent-pr',
+    run: 'bg-accent-run/20 text-accent-run border border-accent-run/30',
+    ride: 'bg-accent-ride/20 text-accent-ride border border-accent-ride/30',
+    walk: 'bg-accent-walk/20 text-accent-walk border border-accent-walk/30',
+    pr: 'bg-accent-pr/20 text-accent-pr border border-accent-pr/30',
   };
 
   return (

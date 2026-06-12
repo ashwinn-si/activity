@@ -17,8 +17,36 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Strava Dashboard",
-  description: "Professional Strava activity dashboard",
+  title: "Strava Dashboard - Track Your Athletic Activities",
+  description: "Professional Strava activity dashboard to track, analyze, and visualize your cycling, running, and fitness activities with detailed stats and performance insights.",
+  keywords: ["Strava", "fitness tracking", "activity dashboard", "cycling", "running", "athletic activities", "performance analytics"],
+  authors: [{ name: "Ashwin" }],
+  creator: "Ashwin",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://strava-activity-hub.vercel.app",
+    title: "Strava Dashboard - Track Your Athletic Activities",
+    description: "Professional dashboard for tracking and analyzing your Strava activities",
+    images: [
+      {
+        url: "/logo.png",
+        width: 512,
+        height: 512,
+        alt: "Strava Activity Hub Logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Strava Dashboard - Track Your Athletic Activities",
+    description: "Professional dashboard for tracking and analyzing your Strava activities",
+    images: ["/logo.png"],
+  },
+  robots: "index, follow",
+  alternates: {
+    canonical: "https://strava-activity-hub.vercel.app",
+  },
 };
 
 export default function RootLayout({

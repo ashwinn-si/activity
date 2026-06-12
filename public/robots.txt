@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+
+Sitemap: https://strava-activity-hub.vercel.app/sitemap.xml
