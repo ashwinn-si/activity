@@ -1,6 +1,6 @@
 # Strava Dashboard Setup
 
-Professional Strava activity dashboard built with Next.js 14, Tailwind CSS, and Framer Motion.
+Professional Strava activity dashboard built with Next.js, Tailwind CSS, and Framer Motion.
 
 ## Quick Start
 
@@ -12,11 +12,16 @@ See [GET_CREDENTIALS.md](GET_CREDENTIALS.md) for detailed instructions. You need
 - **Client Secret**: Keep this secret!
 - **Refresh Token**: Obtain by completing OAuth flow with proper scopes (`activity:read_all`)
 
-### 2. Set Environment Variables
+### 2. Set Up MongoDB
+
+Create a free MongoDB Atlas cluster at https://mongodb.com/atlas, then get your connection URI.
+
+### 3. Set Environment Variables
 
 Update `.env.local`:
 
 ```env
+MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/stravaDashboard?retryWrites=true&w=majority
 STRAVA_CLIENT_ID=your_client_id
 STRAVA_CLIENT_SECRET=your_client_secret
 STRAVA_REFRESH_TOKEN=your_refresh_token
@@ -24,7 +29,7 @@ STRAVA_REFRESH_TOKEN=your_refresh_token
 
 ⚠️ Never commit `.env.local` — it's in `.gitignore`
 
-### 3. Install & Run
+### 4. Install & Run
 
 ```bash
 npm install
@@ -32,6 +37,8 @@ npm run dev
 ```
 
 Open http://localhost:3000
+
+On first load, MongoDB collections are populated automatically from the Strava API. Subsequent loads within 15 minutes are served from MongoDB.
 
 ## Features
 
@@ -52,9 +59,6 @@ Open http://localhost:3000
 ### 📈 Activity Details
 - **Key Stats**: Distance, time, pace/speed, heart rate
 - **Distance vs Time Chart**: Visual progress throughout activity
-  - X-axis: Time elapsed (minutes)
-  - Y-axis: Distance covered (km)
-  - Shows pace consistency
 - **Pace/Speed Chart**: How your pace varied during the activity
 - **Heart Rate Graph**: HR trends (if available)
 - **Elevation Profile**: Altitude changes throughout activity
@@ -83,9 +87,9 @@ app/
 │   └── [id]/page.tsx            # Detail view with charts
 ├── stats/page.tsx               # Aggregated statistics
 ├── api/
-│   ├── athlete/route.ts         # Get athlete profile
-│   ├── activities/route.ts      # List activities
-│   ├── activities/[id]/route.ts # Get activity detail
+│   ├── athlete/route.ts         # Get athlete profile (DB-cached)
+│   ├── activities/route.ts      # List activities (DB-cached)
+│   ├── activities/[id]/route.ts # Get activity detail (DB-cached)
 │   └── debug/route.ts           # Debug credentials
 └── layout.tsx                   # Root layout & navigation
 
@@ -108,8 +112,17 @@ components/
     ├── Skeleton.tsx            # Loading state
     └── EmptyState.tsx          # No data state
 
-lib/strava.ts                    # Strava API client
-store/useStravaStore.ts          # Zustand state management
+lib/
+├── strava.ts                   # Strava API client
+└── mongodb.ts                  # Mongoose connection + TTL helper
+
+models/
+├── Activity.ts                 # Activities collection
+├── AthleteCache.ts             # Athlete + stats document
+├── ActivityDetailCache.ts      # Activity detail + streams
+└── CacheMetadata.ts            # Cache freshness tracking
+
+store/useStravaStore.ts         # Zustand state management
 utils/formatters.ts             # Format utilities
 ```
 
@@ -117,26 +130,26 @@ utils/formatters.ts             # Format utilities
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | Next.js 14 (App Router) |
+| Framework | Next.js (App Router) |
+| Database | MongoDB (Mongoose) |
 | Styling | Tailwind CSS v4 |
 | Animation | Framer Motion |
 | State | Zustand |
 | Charts | Recharts |
 | Icons | Lucide React |
 | Dates | date-fns |
-| HTTP | Native fetch + Next.js caching |
 
 ## Security
 
 ✅ **Server-Side Only**: All credentials are processed server-side
 ✅ **Never Exposed**: Browser only receives JSON data
-✅ **Token Caching**: 5-minute automatic cache to reduce API calls
+✅ **MongoDB Cache**: Data served from DB — Strava API called at most every 15 min
 ✅ **Secure Refresh**: Automatic token refresh before expiration
 
 Data flow:
 ```
-Browser → Next.js API Route → Strava API → Cached Response → Browser
-         (server-side)       (secure)                    (JSON only)
+Browser → Next.js API Route → MongoDB (cache hit) → Browser
+Browser → Next.js API Route → Strava API → MongoDB (upsert) → Browser
 ```
 
 ## Development
@@ -162,22 +175,13 @@ Check credential status:
 curl http://localhost:3000/api/debug
 ```
 
-Returns:
-```json
-{
-  "status": "ok",
-  "message": "Token refresh successful",
-  "token_expires_in": 21600
-}
-```
-
 ## Rate Limits
 
 Strava API limits:
 - **200 requests** per 15 minutes
 - **2,000 requests** per day
 
-This app caches responses for 5 minutes to stay under limits. With typical usage (checking dashboard a few times per day), you'll use < 10 requests/day.
+With MongoDB caching (15-min TTL), the app makes at most 2 Strava requests per 15-minute window (activities + athlete). Activity detail pages are cached permanently, so each unique activity only costs 1 Strava API call ever.
 
 ## Troubleshooting
 
@@ -185,34 +189,36 @@ This app caches responses for 5 minutes to stay under limits. With typical usage
 - Refresh token is invalid or expired
 - See [GET_CREDENTIALS.md](GET_CREDENTIALS.md) to get a new one
 
+**"MONGODB_URI environment variable is not set"**
+- Add `MONGODB_URI` to `.env.local`
+- See Step 2 above for Atlas setup
+
 **"Activities not loading"**
-- Check `.env.local` has all three credentials
-- Run `/api/debug` endpoint to verify
+- Check `.env.local` has all four variables (including `MONGODB_URI`)
+- Run `/api/debug` endpoint to verify Strava credentials
 - Check browser console for errors
 
 **Charts not showing**
 - Some activities may not have all stream data (HR, altitude)
 - Charts only appear if data is available
-- Check activity has at least distance stream data
 
-**Empty activities list**
-- Verify you have recent activities on Strava
-- Activities older than 5 years may not be available
-- Check date range picker on dashboard
+**Data seems stale**
+- Click the ↻ refresh button to force-fetch from Strava
+- Or see [CACHING.md](CACHING.md) for manual cache expiry
 
 ## Documentation
 
 - **[README.md](README.md)** — Project overview
 - **[STYLE.md](STYLE.md)** — Design system & colors
 - **[GET_CREDENTIALS.md](GET_CREDENTIALS.md)** — OAuth setup
-- **[CLAUDE.md](CLAUDE.md)** — Developer notes
+- **[CACHING.md](CACHING.md)** — MongoDB caching strategy
+- **[DEPLOY.md](DEPLOY.md)** — Deploy to Vercel
 
 ## Next Steps
 
-1. ✅ Set up credentials
-2. ✅ Run development server
-3. 🎯 Explore dashboard & activities
-4. 📊 Check your stats page
-5. 📱 Test on mobile
-
-Enjoy tracking your activities! 🏃‍♂️🚴‍♀️
+1. ✅ Set up Strava credentials
+2. ✅ Set up MongoDB Atlas
+3. ✅ Run development server
+4. 🎯 Explore dashboard & activities
+5. 📊 Check your stats page
+6. 📱 Test on mobile

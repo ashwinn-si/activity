@@ -142,10 +142,11 @@ curl -X POST https://www.strava.com/oauth/token \
 
 1. Go to your Vercel project
 2. Click **"Settings"** → **"Environment Variables"**
-3. Add three variables:
+3. Add four variables:
 
 | Name                   | Value                                  |
 | ---------------------- | -------------------------------------- |
+| `MONGODB_URI`          | Your MongoDB Atlas connection string   |
 | `STRAVA_CLIENT_ID`     | `257631`                               |
 | `STRAVA_CLIENT_SECRET` | Your client secret                     |
 | `STRAVA_REFRESH_TOKEN` | Your **NEW** refresh token from Step 4 |

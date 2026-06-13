@@ -1,6 +1,6 @@
 # Strava Dashboard
 
-Professional activity tracking dashboard for Strava. Built with Next.js 14, Tailwind CSS, and Framer Motion.
+Professional activity tracking dashboard for Strava. Built with Next.js, Tailwind CSS, and Framer Motion.
 
 ## Features
 
@@ -37,40 +37,52 @@ Professional activity tracking dashboard for Strava. Built with Next.js 14, Tail
 
 ## Quick Start
 
-1. **Get Strava Credentials**
-   - Read [GET_CREDENTIALS.md](GET_CREDENTIALS.md)
-   - Update `.env.local` with your tokens
+1. **Get Strava Credentials** — Read [GET_CREDENTIALS.md](GET_CREDENTIALS.md)
 
-2. **Install & Run**
+2. **Set up MongoDB** — Free Atlas cluster at https://mongodb.com/atlas
+
+3. **Set environment variables** in `.env.local`:
+   ```env
+   MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/stravaDashboard?retryWrites=true&w=majority
+   STRAVA_CLIENT_ID=your_client_id
+   STRAVA_CLIENT_SECRET=your_client_secret
+   STRAVA_REFRESH_TOKEN=your_refresh_token
+   ```
+
+4. **Install & Run**
    ```bash
    npm install
    npm run dev
    ```
 
-3. **Visit** http://localhost:3000
+5. **Visit** http://localhost:3000
 
 ## Project Structure
 
 ```
 ├── app/
 │   ├── page.tsx                # Dashboard
-│   ├── activities/page.tsx      # Activity list
+│   ├── activities/page.tsx     # Activity list
 │   ├── activities/[id]/page.tsx # Activity detail
-│   ├── stats/page.tsx           # Statistics
-│   └── api/                     # Backend routes
+│   ├── stats/page.tsx          # Statistics
+│   └── api/                    # Backend routes (DB-cached)
 ├── components/
-│   ├── cards/                   # StatCard, ActivityCard
-│   ├── charts/                  # Data visualizations
-│   ├── layout/                  # Navigation & structure
-│   └── ui/                      # Reusable components
-├── lib/strava.ts                # Strava API helpers
-├── store/useStravaStore.ts      # State management
-└── utils/formatters.ts          # Format utilities
+│   ├── cards/                  # StatCard, ActivityCard
+│   ├── charts/                 # Data visualizations
+│   ├── layout/                 # Navigation & structure
+│   └── ui/                     # Reusable components
+├── lib/
+│   ├── strava.ts               # Strava API helpers
+│   └── mongodb.ts              # Mongoose connection + TTL
+├── models/                     # Mongoose models (cache collections)
+├── store/useStravaStore.ts     # State management
+└── utils/formatters.ts         # Format utilities
 ```
 
 ## Tech Stack
 
-- **Framework**: Next.js 14 (App Router)
+- **Framework**: Next.js (App Router)
+- **Database**: MongoDB (Mongoose) — server-side cache
 - **Styling**: Tailwind CSS v4
 - **Animation**: Framer Motion
 - **Charts**: Recharts
@@ -78,45 +90,34 @@ Professional activity tracking dashboard for Strava. Built with Next.js 14, Tail
 - **State**: Zustand
 - **Date Utils**: date-fns
 
+## Caching
+
+Activities and athlete data are cached in MongoDB with a **15-minute TTL**. Activity detail + streams are cached permanently (streams are immutable). The ↻ button forces a fresh Strava API call. See [CACHING.md](CACHING.md) for details.
+
 ## Security
 
-All Strava credentials are **server-side only**. Your browser never sees:
-- Client ID, Secret, or Refresh Token
-- These are stored in `.env.local` (added to `.gitignore`)
-
-Data flow is secure: Browser → Next.js API Routes → Strava API → JSON response to browser.
+All Strava credentials are **server-side only**. Your browser never sees the Client ID, Secret, or Refresh Token. Data flow: Browser → Next.js API Routes → MongoDB / Strava API → JSON response.
 
 ## Development
 
 ```bash
-# Dev server
-npm run dev
-
-# Build for production
-npm run build
-
-# Production server
-npm start
-
-# Linting
-npm run lint
+npm run dev       # Dev server
+npm run build     # Production build
+npm start         # Production server
+npm run lint      # Linting
 ```
 
 ## Documentation
 
-- [SETUP.md](SETUP.md) - Initial setup & running locally
-- [GET_CREDENTIALS.md](GET_CREDENTIALS.md) - Strava OAuth setup
-- [DEPLOY.md](DEPLOY.md) - Deploy to Vercel with custom domain
-- [STYLE.md](STYLE.md) - Design system & colors
-- [CACHING.md](CACHING.md) - LocalStorage caching strategy
+- [SETUP.md](SETUP.md) — Initial setup & running locally
+- [GET_CREDENTIALS.md](GET_CREDENTIALS.md) — Strava OAuth setup
+- [DEPLOY.md](DEPLOY.md) — Deploy to Vercel with custom domain
+- [STYLE.md](STYLE.md) — Design system & colors
+- [CACHING.md](CACHING.md) — MongoDB caching strategy
 
 ## Rate Limits
 
-Strava allows:
-- **200 requests** per 15 minutes
-- **2,000 requests** per day
-
-This app uses 5-minute server-side caching to stay well under limits.
+Strava allows 200 requests per 15 minutes / 2,000 per day. With MongoDB caching, the app makes at most 2 Strava requests per 15-minute window under normal use.
 
 ## License
 
