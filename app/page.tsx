@@ -128,7 +128,7 @@ export default function Dashboard() {
           {/* Refresh Button & Theme Toggle */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => fetchAll()}
+              onClick={() => fetchAll(true)}
               disabled={loading}
               className="p-2.5 rounded-xl border border-white/5 bg-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 hover:border-accent-ride/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
               title="Refresh data from Strava"

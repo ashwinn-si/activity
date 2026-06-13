@@ -2,50 +2,6 @@
 
 import { create } from 'zustand';
 
-// Cache configuration
-const CACHE_CONFIG = {
-  ACTIVITIES: { key: 'strava_activities', ttl: 5 * 60 * 1000 }, // 5 mins
-  ATHLETE: { key: 'strava_athlete', ttl: 30 * 60 * 1000 }, // 30 mins
-  STATS: { key: 'strava_stats', ttl: 60 * 60 * 1000 }, // 1 hour
-};
-
-// Cache helpers
-const getCache = (key: string) => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const item = localStorage.getItem(key);
-    if (!item) return null;
-
-    const { data, timestamp } = JSON.parse(item);
-    const config = Object.values(CACHE_CONFIG).find(c => c.key === key);
-
-    if (config && Date.now() - timestamp > config.ttl) {
-      localStorage.removeItem(key);
-      return null;
-    }
-
-    return data;
-  } catch {
-    return null;
-  }
-};
-
-const setCache = (key: string, data: unknown) => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
-  } catch (e) {
-    console.warn('Failed to cache data:', e);
-  }
-};
-
-const clearCache = () => {
-  if (typeof window === 'undefined') return;
-  Object.values(CACHE_CONFIG).forEach(config => {
-    localStorage.removeItem(config.key);
-  });
-};
-
 interface Activity {
   id: number;
   name: string;
@@ -138,48 +94,20 @@ const useStravaStore = create<StravaState>((set) => ({
   error: null,
 
   clearCache: () => {
-    clearCache();
-    set({
-      athlete: null,
-      stats: null,
-      activities: [],
-      error: null,
-    });
+    set({ athlete: null, stats: null, activities: [], error: null });
   },
 
   fetchAll: async (forceRefresh = false) => {
     set({ loading: true, error: null });
     try {
-      // Load from cache first (unless forced refresh)
-      const cachedAthlete = !forceRefresh ? getCache(CACHE_CONFIG.ATHLETE.key) : null;
-      const cachedStats = !forceRefresh ? getCache(CACHE_CONFIG.STATS.key) : null;
-      const cachedActivities = !forceRefresh ? getCache(CACHE_CONFIG.ACTIVITIES.key) : null;
+      const qs = forceRefresh ? '?force=true' : '';
 
-      // Set cached data immediately (while fetching fresh data)
-      if (cachedAthlete || cachedStats || cachedActivities) {
-        set({
-          athlete: cachedAthlete,
-          stats: cachedStats,
-          activities: cachedActivities || [],
-        });
-      }
-
-      // Fetch fresh data from API
       const [athRes, activRes] = await Promise.all([
-        fetch('/api/athlete'),
-        fetch('/api/activities?per_page=100'),
+        fetch(`/api/athlete${qs}`),
+        fetch(`/api/activities${qs}`),
       ]);
 
       if (!athRes.ok || !activRes.ok) {
-        // If API fails but we have cache, show cached data with error
-        if (cachedAthlete || cachedActivities) {
-          set({
-            error: 'Could not fetch fresh data. Showing cached data.',
-            loading: false,
-          });
-          return;
-        }
-
         throw new Error(
           'Invalid Strava credentials. Check GET_CREDENTIALS.md for setup instructions.'
         );
@@ -190,19 +118,6 @@ const useStravaStore = create<StravaState>((set) => ({
         activRes.json(),
       ]);
 
-      // Cache the fresh data
-      if (athResponse.athlete && athResponse.stats) {
-        setCache(CACHE_CONFIG.ATHLETE.key, {
-          athlete: athResponse.athlete,
-          stats: athResponse.stats,
-        });
-      }
-
-      if (Array.isArray(activResponse)) {
-        setCache(CACHE_CONFIG.ACTIVITIES.key, activResponse);
-      }
-
-      // Update state with fresh data
       set({
         athlete: athResponse.athlete,
         stats: athResponse.stats,

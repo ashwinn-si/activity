@@ -30,7 +30,7 @@ export async function stravaFetch(path: string, options: RequestInit = {}) {
       Authorization: `Bearer ${token}`,
       ...options.headers,
     },
-    next: { revalidate: 300 },
+    cache: 'no-store',
   });
 
   if (!res.ok) throw new Error(`Strava API error: ${res.status}`);
