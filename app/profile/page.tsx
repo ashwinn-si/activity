@@ -68,12 +68,23 @@ export default function ProfilePage() {
                   width={96}
                   height={96}
                   className="w-24 h-24 rounded-2xl object-cover ring-2 ring-border"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                 />
-              ) : (
-                <div className="w-24 h-24 rounded-2xl bg-muted flex items-center justify-center text-3xl font-bold text-text-secondary">
-                  {athlete?.firstname?.[0] ?? '?'}
-                </div>
-              )}
+              ) : null}
+              {/* Initials fallback — always rendered, hidden behind the image when image loads */}
+              <div
+                className="w-24 h-24 rounded-2xl flex items-center justify-center text-2xl font-bold text-white select-none"
+                style={{
+                  background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                  position: athlete?.profile?.startsWith('http') ? 'absolute' : 'relative',
+                  inset: 0,
+                  zIndex: -1,
+                }}
+              >
+                {athlete
+                  ? `${athlete.firstname?.[0] ?? ''}${athlete.lastname?.[0] ?? ''}`.toUpperCase() || '?'
+                  : '?'}
+              </div>
               <div className="absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded-full bg-emerald-500 border-2 border-background" />
             </div>
 
