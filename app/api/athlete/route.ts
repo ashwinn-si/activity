@@ -25,7 +25,7 @@ export async function GET(request: Request) {
 
     await AthleteCache.updateOne(
       { singleton: 'athlete' },
-      { $set: { athlete, stats } },
+      { $set: { athlete, stats, cachedAt: new Date() } },
       { upsert: true }
     );
 

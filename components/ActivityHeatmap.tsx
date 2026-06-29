@@ -9,9 +9,11 @@ interface Activity {
   id: number;
   name: string;
   type: string;
+  sport_type?: string;
   distance: number;
   moving_time: number;
   start_date: string;
+  start_date_local?: string; // preferred for calendar grouping (athlete's timezone)
 }
 
 interface ActivityHeatmapProps {
@@ -48,7 +50,9 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
   const dayMap = useMemo(() => {
     const map: Record<string, Activity[]> = {};
     for (const a of activities) {
-      const d = localIso(new Date(a.start_date));
+      // Prefer start_date_local (athlete's timezone); fall back to parsing start_date
+      const raw = a.start_date_local ?? a.start_date;
+      const d = raw.slice(0, 10); // fast ISO date extract: "YYYY-MM-DD"
       if (!map[d]) map[d] = [];
       map[d].push(a);
     }
@@ -101,9 +105,11 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
       }
     });
 
-    // Year summary stats
+    // Year summary stats — use start_date_local when available
     const prefix = `${selectedYear}-`;
-    const yearActs = activities.filter((a) => a.start_date.startsWith(prefix));
+    const yearActs = activities.filter((a) =>
+      (a.start_date_local ?? a.start_date).startsWith(prefix)
+    );
     const yearStats = {
       count: yearActs.length,
       distance: yearActs.reduce((s, a) => s + (a.distance ?? 0), 0),

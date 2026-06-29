@@ -31,11 +31,16 @@ export async function GET(request: Request) {
               stravaId,
               name: a.name as string,
               type: a.type as string,
+              // sport_type is more granular (TrailRun, VirtualRide, GravelRide…)
+              // fall back to type if the field is absent (older API responses)
+              sport_type: (a.sport_type as string) ?? (a.type as string),
               distance: (a.distance as number) ?? 0,
               moving_time: (a.moving_time as number) ?? 0,
               elapsed_time: (a.elapsed_time as number) ?? 0,
               elevation_gain: (a.total_elevation_gain as number) ?? (a.elevation_gain as number) ?? 0,
               start_date: a.start_date as string,
+              // start_date_local is in the athlete's timezone — use for heatmap / calendar grouping
+              start_date_local: (a.start_date_local as string) ?? (a.start_date as string),
               average_speed: (a.average_speed as number) ?? 0,
               max_speed: (a.max_speed as number) ?? 0,
               average_heartrate: a.average_heartrate as number | undefined,
