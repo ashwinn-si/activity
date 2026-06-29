@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getSportMeta } from '@/utils/sportConfig';
 import { formatDistance, formatDuration } from '@/utils/formatters';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -28,9 +28,21 @@ function localIso(d: Date) {
 }
 
 export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
-  const currentYear = new Date().getFullYear();
+  // All date-dependent state is set in useEffect to avoid SSR/client mismatch.
+  // Server renders UTC; client renders local timezone — without this the year
+  // and today's date can differ, causing a React hydration error.
+  const [selectedYear, setSelectedYear] = useState(0);
+  const [todayStr, setTodayStr] = useState('');
+  const [currentYear, setCurrentYear] = useState(0);
 
-  const [selectedYear, setSelectedYear] = useState(currentYear);
+  useEffect(() => {
+    const now = new Date();
+    const yr = now.getFullYear();
+    setCurrentYear(yr);
+    setSelectedYear(yr);
+    setTodayStr(localIso(now));
+  }, []);
+
   const [tooltip, setTooltip] = useState<{
     date: string;
     acts: Activity[];
@@ -42,7 +54,7 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
   const availableYears = useMemo(() => {
     const yrs = new Set<number>();
     for (const a of activities) yrs.add(new Date(a.start_date).getFullYear());
-    yrs.add(currentYear); // always include current year
+    if (currentYear) yrs.add(currentYear); // always include current year
     return [...yrs].sort((a, b) => a - b);
   }, [activities, currentYear]);
 
@@ -60,8 +72,9 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
   }, [activities]);
 
   const { weeks, monthLabels, maxCount, yearStats } = useMemo(() => {
-    const today = new Date();
-    const isCurrentYear = selectedYear === today.getFullYear();
+    if (!selectedYear) return { weeks: [], monthLabels: [], maxCount: 0, yearStats: { count: 0, distance: 0, time: 0, activeDays: 0 } };
+    const today = todayStr ? new Date(todayStr + 'T00:00:00') : new Date();
+    const isCurrentYear = selectedYear === currentYear;
 
     // Jan 1 of selected year
     const jan1 = new Date(selectedYear, 0, 1);
@@ -118,7 +131,7 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
     };
 
     return { weeks, monthLabels, maxCount, yearStats };
-  }, [selectedYear, dayMap, activities]);
+  }, [selectedYear, currentYear, todayStr, dayMap, activities]);
 
   function cellColor(count: number): string {
     if (count === 0) return 'var(--border)';
@@ -142,7 +155,9 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
   };
 
   const yearIdx = availableYears.indexOf(selectedYear);
-  const todayStr = localIso(new Date());
+
+  // Don't render until client-side date is known (avoids hydration mismatch)
+  if (!selectedYear) return <div className="h-40" />;
 
   return (
     <div className="space-y-4">
