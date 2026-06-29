@@ -64,7 +64,7 @@ export default function ProfilePage() {
 
   return (
     <main className="flex-1 overflow-auto pb-20 lg:pb-6">
-      <div className="px-4 md:px-8 lg:px-12 py-6 lg:py-8 space-y-6 max-w-5xl">
+      <div className="px-4 md:px-8 lg:px-12 py-6 lg:py-8 space-y-6 w-full">
 
         {/* ── Profile hero ── */}
         <motion.div variants={item} initial="initial" animate="animate"
@@ -158,9 +158,9 @@ export default function ProfilePage() {
               <h2 className="font-semibold text-text-primary">All-Time Bests</h2>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatTile label="Longest Ride"  value={formatDistance(stats.biggest_ride_distance)} />
-              <StatTile label="Longest Run"   value={formatDistance(stats.longest_run_distance)} />
-              <StatTile label="Biggest Climb" value={`${Math.round(stats.biggest_climb_elevation_gain)} m`} />
+              <StatTile label="Longest Ride"  value={stats.biggest_ride_distance ? formatDistance(stats.biggest_ride_distance) : '—'} />
+              <StatTile label="Longest Run"   value={stats.longest_run_distance  ? formatDistance(stats.longest_run_distance)  : '—'} />
+              <StatTile label="Biggest Climb" value={stats.biggest_climb_elevation_gain ? `${Math.round(stats.biggest_climb_elevation_gain)} m` : '—'} />
               <StatTile label="Total Logged"  value={stats.all_ride_totals.count + stats.all_run_totals.count} sub="activities ever" />
             </div>
           </motion.div>
