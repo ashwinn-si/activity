@@ -677,14 +677,18 @@ export default function ComparePage() {
                       <StatCard label="Max Speed"
                         valA={`${((sessA.activity.max_speed ?? 0) * 3.6).toFixed(1)} km/h`}
                         valB={`${((sessB.activity.max_speed ?? 0) * 3.6).toFixed(1)} km/h`} />
-                      <StatCard label="Avg Heart Rate"
-                        valA={sessA.activity.average_heartrate ? `${Math.round(sessA.activity.average_heartrate)} bpm` : '—'}
-                        valB={sessB.activity.average_heartrate ? `${Math.round(sessB.activity.average_heartrate)} bpm` : '—'}
-                        higherIsBetter={false} />
-                      <StatCard label="Max Heart Rate"
-                        valA={sessA.activity.max_heartrate ? `${Math.round(sessA.activity.max_heartrate)} bpm` : '—'}
-                        valB={sessB.activity.max_heartrate ? `${Math.round(sessB.activity.max_heartrate)} bpm` : '—'}
-                        higherIsBetter={false} />
+                      {hasHR && (
+                        <StatCard label="Avg Heart Rate"
+                          valA={sessA.activity.average_heartrate ? `${Math.round(sessA.activity.average_heartrate)} bpm` : '—'}
+                          valB={sessB.activity.average_heartrate ? `${Math.round(sessB.activity.average_heartrate)} bpm` : '—'}
+                          higherIsBetter={false} />
+                      )}
+                      {hasHR && (
+                        <StatCard label="Max Heart Rate"
+                          valA={sessA.activity.max_heartrate ? `${Math.round(sessA.activity.max_heartrate)} bpm` : '—'}
+                          valB={sessB.activity.max_heartrate ? `${Math.round(sessB.activity.max_heartrate)} bpm` : '—'}
+                          higherIsBetter={false} />
+                      )}
                     </div>
 
                     {/* Km splits */}
