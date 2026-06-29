@@ -6,7 +6,7 @@ import { Search, Check, ChevronDown, X, Activity } from 'lucide-react';
 import { getSportMeta } from '@/utils/sportConfig';
 import { formatDistance, formatDuration, formatPace, formatSpeed } from '@/utils/formatters';
 
-interface Activity {
+interface ActivityItem {
   id: number;
   name: string;
   type: string;
@@ -23,15 +23,14 @@ interface Activity {
 
 interface SessionPickerProps {
   label: string;
-  accent: 'run' | 'ride';
-  activities: Activity[];
-  selected: Activity | null;
-  onSelect: (a: Activity | null) => void;
+  /** Hex accent color for trigger border glow. Defaults to filterType sport color. */
+  accentColor?: string;
+  activities: ActivityItem[];
+  selected: ActivityItem | null;
+  onSelect: (a: ActivityItem | null) => void;
   filterType?: string | null;
   excludeIds?: number[];
 }
-
-const accentHex = { run: '#6366f1', ride: '#8b5cf6' };
 
 /* ── Sport chip ─────────────────────────────────────────────── */
 function SportChip({ type, count, active, onClick }: {
@@ -49,7 +48,9 @@ function SportChip({ type, count, active, onClick }: {
         color: meta.hex,
       } : undefined}
       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all duration-150 ${
-        active ? '' : 'border-border bg-surface text-text-secondary hover:text-text-primary hover:bg-muted'
+        active
+          ? ''
+          : 'border-border bg-surface text-text-secondary hover:text-text-primary hover:bg-muted'
       }`}
     >
       <Icon className="w-3 h-3" />
@@ -69,7 +70,7 @@ function SportChip({ type, count, active, onClick }: {
 
 /* ── Activity row ───────────────────────────────────────────── */
 function ActivityRow({ activity, selected, onClick }: {
-  activity: Activity; selected: boolean; onClick: () => void;
+  activity: ActivityItem; selected: boolean; onClick: () => void;
 }) {
   const meta = getSportMeta(activity.type);
   const Icon = meta.icon;
@@ -77,10 +78,9 @@ function ActivityRow({ activity, selected, onClick }: {
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors duration-100 hover:bg-muted group"
+      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors duration-100 hover:bg-muted"
       style={selected ? { background: `${meta.hex}10`, outline: `1px solid ${meta.hex}30` } : undefined}
     >
-      {/* icon */}
       <div
         className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
         style={{ background: `${meta.hex}15`, color: meta.hex }}
@@ -88,7 +88,6 @@ function ActivityRow({ activity, selected, onClick }: {
         <Icon className="w-3.5 h-3.5" />
       </div>
 
-      {/* name + date */}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-text-primary truncate">{activity.name}</p>
         <p className="text-[11px] text-text-secondary mt-0.5">
@@ -98,23 +97,20 @@ function ActivityRow({ activity, selected, onClick }: {
         </p>
       </div>
 
-      {/* stats */}
       <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-text-secondary flex-shrink-0">
         <span>{formatDistance(activity.distance)}</span>
-        <span className="text-border">·</span>
+        <span style={{ color: 'var(--text-muted)' }}>·</span>
         <span>{formatDuration(activity.moving_time)}</span>
-        <span className="text-border">·</span>
+        <span style={{ color: 'var(--text-muted)' }}>·</span>
         <span>
           {meta.usePace ? formatPace(activity.average_speed) : formatSpeed(activity.average_speed)}
         </span>
       </div>
 
-      {/* mobile stats */}
-      <div className="flex sm:hidden items-center gap-1.5 text-[11px] font-mono text-text-secondary flex-shrink-0">
-        <span>{formatDistance(activity.distance)}</span>
+      <div className="flex sm:hidden text-[11px] font-mono text-text-secondary flex-shrink-0">
+        {formatDistance(activity.distance)}
       </div>
 
-      {/* check */}
       {selected && (
         <Check className="w-4 h-4 flex-shrink-0" style={{ color: meta.hex }} />
       )}
@@ -124,9 +120,10 @@ function ActivityRow({ activity, selected, onClick }: {
 
 /* ── Main component ─────────────────────────────────────────── */
 export function SessionPicker({
-  label, accent, activities, selected, onSelect, filterType, excludeIds = [],
+  label, accentColor, activities, selected, onSelect, filterType, excludeIds = [],
 }: SessionPickerProps) {
-  const hex = accentHex[accent];
+  const hex = accentColor ?? (filterType ? getSportMeta(filterType).hex : '#6366f1');
+
   const [open, setOpen] = useState(false);
   const [sportFilter, setSportFilter] = useState<string | null>(filterType ?? null);
   const [query, setQuery] = useState('');
@@ -178,7 +175,7 @@ export function SessionPicker({
     return list.sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
   }, [activities, excludeIds, sportFilter, filterType, query]);
 
-  const handleSelect = (a: Activity) => { onSelect(a); setOpen(false); setQuery(''); };
+  const handleSelect = (a: ActivityItem) => { onSelect(a); setOpen(false); setQuery(''); };
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation(); onSelect(null);
     if (!filterType) setSportFilter(null);
@@ -189,14 +186,13 @@ export function SessionPicker({
 
   return (
     <div className="relative" ref={wrapRef}>
-      {/* Label */}
       {label && (
         <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: hex }}>
           {label}
         </p>
       )}
 
-      {/* Trigger button */}
+      {/* Trigger */}
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all duration-200"
@@ -250,12 +246,12 @@ export function SessionPicker({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-50 mt-2 w-full rounded-2xl overflow-hidden"
+            className="absolute z-[9999] mt-2 left-0 right-0 rounded-2xl overflow-hidden"
             style={{
               background: 'var(--background)',
               border: '1px solid var(--border)',
-              boxShadow: '0 16px 48px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.08)',
-              minWidth: 320,
+              boxShadow: '0 20px 56px rgba(0,0,0,0.15), 0 6px 20px rgba(0,0,0,0.09)',
+              minWidth: 280,
             }}
           >
             {/* Sport chips — only when not locked to a single type */}
@@ -267,16 +263,11 @@ export function SessionPicker({
                 <button
                   onClick={() => setSportFilter(null)}
                   className="px-3 py-1.5 rounded-lg border text-xs font-medium transition-all duration-150"
-                  style={sportFilter === null ? {
-                    background: 'var(--muted)',
-                    borderColor: 'var(--border)',
-                    color: 'var(--text-primary)',
-                    fontWeight: 600,
-                  } : {
-                    borderColor: 'transparent',
-                    color: 'var(--text-secondary)',
-                    background: 'transparent',
-                  }}
+                  style={
+                    sportFilter === null
+                      ? { background: 'var(--muted)', borderColor: 'var(--border)', color: 'var(--text-primary)', fontWeight: 600 }
+                      : { borderColor: 'transparent', color: 'var(--text-secondary)', background: 'transparent' }
+                  }
                 >
                   All
                 </button>
@@ -304,7 +295,7 @@ export function SessionPicker({
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search by name or date…"
-                  className="flex-1 bg-transparent text-sm outline-none"
+                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-text-muted"
                   style={{ color: 'var(--text-primary)' }}
                 />
                 {query && (
@@ -316,9 +307,11 @@ export function SessionPicker({
             </div>
 
             {/* List */}
-            <div className="overflow-y-auto px-2 py-1.5" style={{ maxHeight: 280 }}>
+            <div className="overflow-y-auto px-2 py-1.5" style={{ maxHeight: 300 }}>
               {filtered.length === 0 ? (
-                <p className="text-center text-sm text-text-muted py-8">No sessions found</p>
+                <p className="text-center text-sm py-8" style={{ color: 'var(--text-muted)' }}>
+                  No sessions found
+                </p>
               ) : (
                 filtered.map((a) => (
                   <ActivityRow
@@ -332,13 +325,10 @@ export function SessionPicker({
             </div>
 
             {/* Footer */}
-            <div
-              className="px-4 py-2"
-              style={{ borderTop: '1px solid var(--border)' }}
-            >
+            <div className="px-4 py-2" style={{ borderTop: '1px solid var(--border)' }}>
               <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
                 {filtered.length} session{filtered.length !== 1 ? 's' : ''}
-                {sportFilter && !filterType ? ` · ${sportFilter}` : ''}
+                {sportFilter && !filterType ? ` · ${getSportMeta(sportFilter).label}` : ''}
               </p>
             </div>
           </motion.div>

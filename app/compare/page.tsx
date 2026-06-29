@@ -582,7 +582,7 @@ export default function ComparePage() {
                   </div>
                   <SessionPicker
                     label=""
-                    accent="run"
+                    accentColor={COLOR_A}
                     activities={activities}
                     selected={activityA}
                     onSelect={(a) => { setActivityA(a); setActivityB(null); }}
@@ -599,7 +599,7 @@ export default function ComparePage() {
                   </div>
                   <SessionPicker
                     label=""
-                    accent="ride"
+                    accentColor={COLOR_B}
                     activities={activities}
                     selected={activityB}
                     onSelect={setActivityB}

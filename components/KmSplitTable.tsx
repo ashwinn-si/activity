@@ -6,6 +6,7 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 interface KmSplitTableProps {
   distanceData: number[];
   timeData: number[];
+  sportHex?: string;  // accent color for bars
 }
 
 interface Split {
@@ -32,57 +33,41 @@ function computeSplits(distData: number[], timeData: number[]): Split[] {
 
   for (let km = 1; km <= totalKm; km++) {
     const targetMeters = km * 1000;
-    let idx = distData.findIndex((d) => d >= targetMeters);
+    const idx = distData.findIndex((d) => d >= targetMeters);
     if (idx === -1) break;
 
     let interpolatedTime: number;
     if (idx === 0) {
       interpolatedTime = timeData[0];
     } else {
-      const d0 = distData[idx - 1];
-      const d1 = distData[idx];
-      const t0 = timeData[idx - 1];
-      const t1 = timeData[idx];
-      const frac = (targetMeters - d0) / (d1 - d0);
-      interpolatedTime = t0 + frac * (t1 - t0);
+      const d0 = distData[idx - 1], d1 = distData[idx];
+      const t0 = timeData[idx - 1], t1 = timeData[idx];
+      interpolatedTime = t0 + ((targetMeters - d0) / (d1 - d0)) * (t1 - t0);
     }
 
     const splitSeconds = interpolatedTime - prevCumulative;
     const delta = prevSplitSeconds !== null ? splitSeconds - prevSplitSeconds : null;
 
-    splits.push({
-      km,
-      splitSeconds,
-      cumulativeSeconds: interpolatedTime,
-      pace: formatSplitTime(splitSeconds),
-      delta,
-    });
+    splits.push({ km, splitSeconds, cumulativeSeconds: interpolatedTime, pace: formatSplitTime(splitSeconds), delta });
 
     prevCumulative = interpolatedTime;
     prevSplitSeconds = splitSeconds;
   }
 
   // Partial last km
-  const lastKmStart = totalKm * 1000;
-  const remainingMeters = totalMeters - lastKmStart;
+  const remainingMeters = totalMeters - totalKm * 1000;
   if (remainingMeters > 50) {
     const lastTime = timeData[timeData.length - 1];
     const partialSeconds = lastTime - prevCumulative;
-    const projectedFullKmSeconds = (partialSeconds / remainingMeters) * 1000;
-    const delta = prevSplitSeconds !== null ? projectedFullKmSeconds - prevSplitSeconds : null;
-    splits.push({
-      km: totalKm + 1,
-      splitSeconds: projectedFullKmSeconds,
-      cumulativeSeconds: lastTime,
-      pace: formatSplitTime(projectedFullKmSeconds),
-      delta,
-    });
+    const projected = (partialSeconds / remainingMeters) * 1000;
+    const delta = prevSplitSeconds !== null ? projected - prevSplitSeconds : null;
+    splits.push({ km: totalKm + 1, splitSeconds: projected, cumulativeSeconds: lastTime, pace: formatSplitTime(projected), delta });
   }
 
   return splits;
 }
 
-export function KmSplitTable({ distanceData, timeData }: KmSplitTableProps) {
+export function KmSplitTable({ distanceData, timeData, sportHex = '#6366f1' }: KmSplitTableProps) {
   const splits = computeSplits(distanceData, timeData);
   if (splits.length === 0) return null;
 
@@ -112,105 +97,105 @@ export function KmSplitTable({ distanceData, timeData }: KmSplitTableProps) {
         </div>
       </div>
 
+      {/* Scrollable table — sticky header */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="pb-3 text-left font-medium text-text-secondary">Km</th>
-              <th className="pb-3 text-right font-medium text-text-secondary">Split</th>
-              <th className="pb-3 text-right font-medium text-text-secondary">Cumulative</th>
-              <th className="pb-3 text-right font-medium text-text-secondary">vs prev</th>
-              <th className="pb-3 pr-1 text-right font-medium text-text-secondary">Pace bar</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/40">
-            {splits.map((split, i) => {
-              const isFastest = split.splitSeconds === fastest;
-              const isSlowest = split.splitSeconds === slowest;
-              const isPartial = i === splits.length - 1 && split.km > Math.floor(distanceData[distanceData.length - 1] / 1000);
+        <div className="overflow-y-auto" style={{ maxHeight: 380 }}>
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 z-10" style={{ background: 'var(--background)' }}>
+              <tr className="border-b border-border">
+                <th className="pb-3 pt-1 text-left font-medium text-text-secondary">Km</th>
+                <th className="pb-3 pt-1 text-right font-medium text-text-secondary">Split</th>
+                <th className="pb-3 pt-1 text-right font-medium text-text-secondary">Cumulative</th>
+                <th className="pb-3 pt-1 text-right font-medium text-text-secondary">vs prev</th>
+                <th className="pb-3 pt-1 pr-1 text-right font-medium text-text-secondary">Pace bar</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/40">
+              {splits.map((split, i) => {
+                const isFastest = split.splitSeconds === fastest;
+                const isSlowest = split.splitSeconds === slowest;
+                const isPartial = i === splits.length - 1 && split.km > Math.floor(distanceData[distanceData.length - 1] / 1000);
 
-              const barWidth = Math.round(
-                ((split.splitSeconds - fastest) / (slowest - fastest + 1)) * 100
-              );
+                const barWidth = slowest === fastest
+                  ? 50
+                  : Math.round(((split.splitSeconds - fastest) / (slowest - fastest)) * 100);
 
-              const deltaColor =
-                split.delta === null
-                  ? 'text-text-muted'
-                  : split.delta < -2
-                  ? 'text-accent-run'
-                  : split.delta > 2
-                  ? 'text-red-400'
+                const deltaColor =
+                  split.delta === null ? 'text-text-muted'
+                  : split.delta < -2 ? 'text-emerald-500'
+                  : split.delta > 2  ? 'text-red-400'
                   : 'text-text-secondary';
 
-              const DeltaIcon =
-                split.delta === null
-                  ? Minus
-                  : split.delta < -2
-                  ? TrendingDown
-                  : split.delta > 2
-                  ? TrendingUp
+                const DeltaIcon = split.delta === null ? Minus
+                  : split.delta < -2 ? TrendingDown
+                  : split.delta > 2  ? TrendingUp
                   : Minus;
 
-              return (
-                <motion.tr
-                  key={split.km}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                  className="group"
-                >
-                  <td className="py-3 font-mono font-semibold text-text-primary">
-                    <span className="flex items-center gap-2">
-                      {isPartial ? (
-                        <span className="text-text-secondary">~{split.km}</span>
-                      ) : (
-                        split.km
-                      )}
-                      {isFastest && (
-                        <span className="rounded-full bg-accent-run/20 px-1.5 py-0.5 text-[10px] font-semibold text-accent-run">
-                          fastest
-                        </span>
-                      )}
-                      {isSlowest && splits.length > 1 && (
-                        <span className="rounded-full bg-red-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-red-400">
-                          slowest
-                        </span>
-                      )}
-                    </span>
-                  </td>
-                  <td className="py-3 text-right font-mono text-text-primary">
-                    {split.pace}
-                    {isPartial && (
-                      <span className="ml-1 text-[10px] text-text-muted">(proj)</span>
-                    )}
-                  </td>
-                  <td className="py-3 text-right font-mono text-text-secondary">
-                    {formatSplitTime(split.cumulativeSeconds)}
-                  </td>
-                  <td className={`py-3 text-right font-mono text-xs ${deltaColor}`}>
-                    <span className="flex items-center justify-end gap-1">
-                      <DeltaIcon className="w-3 h-3" />
-                      {split.delta !== null
-                        ? `${split.delta > 0 ? '+' : ''}${formatSplitTime(Math.abs(split.delta))}`
-                        : '—'}
-                    </span>
-                  </td>
-                  <td className="py-3 pl-4 pr-1">
-                    <div className="flex items-center justify-end">
-                      <div className="h-1.5 w-24 rounded-full bg-white/5 overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-accent-run to-blue-400 transition-all duration-500"
-                          style={{ width: `${100 - barWidth}%` }}
-                        />
+                return (
+                  <motion.tr
+                    key={split.km}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: Math.min(i * 0.03, 0.5) }}
+                    className="group"
+                  >
+                    <td className="py-3 font-mono font-semibold text-text-primary">
+                      <span className="flex items-center gap-2">
+                        {isPartial ? <span className="text-text-secondary">~{split.km}</span> : split.km}
+                        {isFastest && (
+                          <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                            style={{ background: `${sportHex}22`, color: sportHex }}>
+                            fastest
+                          </span>
+                        )}
+                        {isSlowest && splits.length > 1 && (
+                          <span className="rounded-full bg-red-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-red-400">
+                            slowest
+                          </span>
+                        )}
+                      </span>
+                    </td>
+                    <td className="py-3 text-right font-mono text-text-primary">
+                      {split.pace}
+                      {isPartial && <span className="ml-1 text-[10px] text-text-muted">(proj)</span>}
+                    </td>
+                    <td className="py-3 text-right font-mono text-text-secondary">
+                      {formatSplitTime(split.cumulativeSeconds)}
+                    </td>
+                    <td className={`py-3 text-right font-mono text-xs ${deltaColor}`}>
+                      <span className="flex items-center justify-end gap-1">
+                        <DeltaIcon className="w-3 h-3" />
+                        {split.delta !== null
+                          ? `${split.delta > 0 ? '+' : ''}${formatSplitTime(Math.abs(split.delta))}`
+                          : '—'}
+                      </span>
+                    </td>
+                    <td className="py-3 pl-4 pr-1">
+                      <div className="flex items-center justify-end">
+                        <div className="h-1.5 w-24 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${100 - barWidth}%`,
+                              background: `linear-gradient(to right, ${sportHex}80, ${sportHex})`,
+                            }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                </motion.tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    </td>
+                  </motion.tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      {splits.length > 8 && (
+        <p className="mt-2 text-center text-[11px] text-text-muted">
+          Scroll to see all {splits.length} splits
+        </p>
+      )}
     </motion.div>
   );
 }

@@ -188,10 +188,6 @@ export default function ActivityDetailPage() {
               value: formatDuration(activity.moving_time),
             },
             {
-              label: 'Avg Time per km',
-              value: formatPacePerKm(activity.average_speed),
-            },
-            {
               label: sportMeta.paceLabel,
               value: sportMeta.usePace
                 ? formatPacePerKm(activity.average_speed)
@@ -273,6 +269,7 @@ export default function ActivityDetailPage() {
               <KmSplitTable
                 distanceData={distData}
                 timeData={timeData}
+                sportHex={sportMeta.hex}
               />
             </motion.div>
 
