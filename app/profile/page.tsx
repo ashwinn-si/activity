@@ -61,7 +61,7 @@ export default function ProfilePage() {
           <div className="flex items-start gap-5 flex-wrap">
             {/* Avatar */}
             <div className="relative flex-shrink-0">
-              {athlete?.profile ? (
+              {athlete?.profile && athlete.profile.startsWith('http') ? (
                 <Image
                   src={athlete.profile}
                   alt="Profile"
