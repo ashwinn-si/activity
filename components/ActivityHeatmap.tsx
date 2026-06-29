@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getSportMeta } from '@/utils/sportConfig';
 import { formatDistance, formatDuration } from '@/utils/formatters';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -142,9 +142,19 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
     return '#3b82f6';
   }
 
-  const handleMouseEnter = (e: React.MouseEvent, dateKey: string) => {
+  // Ref-based active date avoids stale closure comparisons
+  const activeDateRef = useRef<string | null>(null);
+
+  const handleMouseEnter = useCallback((e: React.MouseEvent, dateKey: string) => {
+    // Same cell already showing — skip to prevent re-render loop
+    if (activeDateRef.current === dateKey) return;
     const acts = dayMap[dateKey] ?? [];
-    if (!acts.length) { setTooltip(null); return; } // skip empty days
+    if (!acts.length) {
+      activeDateRef.current = null;
+      setTooltip(null);
+      return;
+    }
+    activeDateRef.current = dateKey;
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setTooltip({
       date: dateKey,
@@ -152,7 +162,12 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
       mx: rect.left + rect.width / 2,
       my: rect.top,
     });
-  };
+  }, [dayMap]);
+
+  const handleGridMouseLeave = useCallback(() => {
+    activeDateRef.current = null;
+    setTooltip(null);
+  }, []);
 
   const yearIdx = availableYears.indexOf(selectedYear);
 
@@ -232,8 +247,9 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
               ))}
             </div>
 
-            {/* Week columns */}
-            <div className="flex gap-0.5">
+            {/* Week columns — onMouseLeave on container clears tooltip once,
+                not on every individual cell (avoids rapid set/clear cycling) */}
+            <div className="flex gap-0.5" onMouseLeave={handleGridMouseLeave}>
               {weeks.map((week, wi) => (
                 <div key={wi} className="flex flex-col gap-0.5">
                   {week.map((dateKey, di) => {
@@ -249,7 +265,6 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
                       <div
                         key={di}
                         onMouseEnter={(e) => handleMouseEnter(e, dateKey)}
-                        onMouseLeave={() => setTooltip(null)}
                         className="rounded-[2px] cursor-default transition-opacity duration-100 hover:opacity-80"
                         style={{
                           width: 12,
