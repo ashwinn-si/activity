@@ -219,68 +219,66 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
         </div>
       </div>
 
-      {/* Heatmap grid */}
-      <div className="heatmap-scroll overflow-x-auto">
-        <div style={{ minWidth: weeks.length * 14 + 32 }}>
-          {/* Month labels row */}
-          <div className="relative mb-1" style={{ height: 16, paddingLeft: 28 }}>
-            {monthLabels.map(({ month, col }, i) => (
-              <span
-                key={i}
-                className="absolute text-[10px] text-text-muted"
-                style={{ left: 28 + col * 14 }}
-              >
-                {month}
-              </span>
-            ))}
-          </div>
-
-          {/* Day-label column + week columns */}
-          <div className="flex">
-            {/* Day labels */}
-            <div className="flex flex-col gap-0.5 mr-1 flex-shrink-0" style={{ width: 26 }}>
-              {DAYS.map((d, i) => (
-                <div key={i} className="text-[10px] text-text-muted text-right pr-1"
-                  style={{ height: 12, lineHeight: '12px' }}>
-                  {d}
-                </div>
-              ))}
-            </div>
-
-            {/* Week columns — onMouseLeave on container clears tooltip once,
-                not on every individual cell (avoids rapid set/clear cycling) */}
-            <div className="flex gap-0.5" onMouseLeave={handleGridMouseLeave}>
-              {weeks.map((week, wi) => (
-                <div key={wi} className="flex flex-col gap-0.5">
-                  {week.map((dateKey, di) => {
-                    if (!dateKey) {
-                      return (
-                        <div key={di} style={{ width: 12, height: 12 }}
-                          className="rounded-[2px]" />
-                      );
-                    }
-                    const count = dayMap[dateKey]?.length ?? 0;
-                    const isToday = dateKey === todayStr;
-                    return (
-                      <div
-                        key={di}
-                        onMouseEnter={(e) => handleMouseEnter(e, dateKey)}
-                        className="rounded-[2px] cursor-default transition-opacity duration-100 hover:opacity-80"
-                        style={{
-                          width: 12,
-                          height: 12,
-                          background: cellColor(count),
-                          boxShadow: isToday ? '0 0 0 1.5px #3b82f6' : undefined,
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
+      {/* Heatmap grid — full-width CSS grid, no fixed pixel sizes */}
+      <div className="w-full">
+        {/* Month labels aligned to week columns */}
+        <div className="flex mb-1" style={{ paddingLeft: 28 }}>
+          <div
+            className="flex-1 grid"
+            style={{ gridTemplateColumns: `repeat(${weeks.length}, 1fr)` }}
+          >
+            {weeks.map((_, wi) => {
+              const label = monthLabels.find((m) => m.col === wi);
+              return (
+                <span key={wi} className="text-[10px] text-text-muted overflow-hidden whitespace-nowrap">
+                  {label?.month ?? ''}
+                </span>
+              );
+            })}
           </div>
         </div>
 
+        {/* Day-label column + week grid */}
+        <div className="flex w-full gap-1">
+          {/* Day labels — fixed narrow column */}
+          <div className="flex flex-col" style={{ width: 22, gap: '10%' }}>
+            {DAYS.map((d, i) => (
+              <div key={i} className="text-[10px] text-text-muted text-right leading-none flex-1 flex items-center justify-end">
+                {d}
+              </div>
+            ))}
+          </div>
+
+          {/* Week columns — responsive 1fr grid, cells square via aspect-ratio */}
+          <div
+            className="flex-1 grid"
+            style={{ gridTemplateColumns: `repeat(${weeks.length}, 1fr)`, gap: 3 }}
+            onMouseLeave={handleGridMouseLeave}
+          >
+            {weeks.map((week, wi) => (
+              <div key={wi} className="flex flex-col" style={{ gap: 3 }}>
+                {week.map((dateKey, di) => {
+                  if (!dateKey) {
+                    return <div key={di} className="aspect-square rounded-[2px]" />;
+                  }
+                  const count = dayMap[dateKey]?.length ?? 0;
+                  const isToday = dateKey === todayStr;
+                  return (
+                    <div
+                      key={di}
+                      onMouseEnter={(e) => handleMouseEnter(e, dateKey)}
+                      className="aspect-square rounded-[2px] cursor-default transition-opacity duration-100 hover:opacity-80"
+                      style={{
+                        background: cellColor(count),
+                        boxShadow: isToday ? '0 0 0 1.5px #3b82f6' : undefined,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Legend */}
