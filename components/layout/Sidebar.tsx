@@ -3,13 +3,12 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Activity, TrendingUp, Home, GitCompare, Trophy, User } from 'lucide-react';
+import { Activity, Home, GitCompare, Trophy, User } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 
 const navItems = [
   { href: '/', icon: Home, label: 'Dashboard' },
   { href: '/activities', icon: Activity, label: 'Activities' },
-  { href: '/stats', icon: TrendingUp, label: 'Stats' },
   { href: '/records', icon: Trophy, label: 'Records' },
   { href: '/compare', icon: GitCompare, label: 'Compare' },
   { href: '/profile', icon: User, label: 'Profile' },

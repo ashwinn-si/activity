@@ -8,15 +8,25 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { ActivityHeatmap } from '@/components/ActivityHeatmap';
 import { getSportMeta } from '@/utils/sportConfig';
 import { formatDistance, formatDuration } from '@/utils/formatters';
-import { MapPin, Calendar, Award, Zap } from 'lucide-react';
+import { MapPin, Calendar, Award, Zap, TrendingUp, Trophy } from 'lucide-react';
 
 const item = {
   initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0, transition: { duration: 0.35 } },
 };
 
+function StatTile({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+  return (
+    <div className="glass-panel rounded-2xl p-4 flex flex-col gap-1">
+      <p className="text-[10px] uppercase tracking-widest font-semibold text-text-secondary">{label}</p>
+      <p className="text-2xl font-bold font-mono text-text-primary">{value}</p>
+      {sub && <p className="text-xs text-text-muted">{sub}</p>}
+    </div>
+  );
+}
+
 export default function ProfilePage() {
-  const { athlete, activities, loading, fetchAll } = useStravaStore();
+  const { athlete, activities, stats, loading, fetchAll } = useStravaStore();
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -43,8 +53,10 @@ export default function ProfilePage() {
       <main className="flex-1 overflow-auto pb-20 lg:pb-6">
         <div className="px-4 md:px-8 lg:px-12 py-6 lg:py-8 space-y-6">
           <Skeleton className="h-48" />
+          <Skeleton className="h-40" />
+          <Skeleton className="h-40" />
           <Skeleton className="h-64" />
-          <Skeleton className="h-96" />
+          <Skeleton className="h-72" />
         </div>
       </main>
     );
@@ -71,7 +83,6 @@ export default function ProfilePage() {
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                 />
               ) : null}
-              {/* Initials fallback — always rendered, hidden behind the image when image loads */}
               <div
                 className="w-24 h-24 rounded-2xl flex items-center justify-center text-2xl font-bold text-white select-none"
                 style={{
@@ -93,7 +104,6 @@ export default function ProfilePage() {
               <h1 className="text-2xl font-bold tracking-tight">
                 {athlete ? `${athlete.firstname} ${athlete.lastname}` : '—'}
               </h1>
-
               <div className="mt-2 flex flex-wrap gap-3 text-sm text-text-secondary">
                 {(athlete?.city || athlete?.state) && (
                   <span className="flex items-center gap-1">
@@ -108,15 +118,13 @@ export default function ProfilePage() {
                   </span>
                 )}
               </div>
-
-              {/* Quick totals */}
-              <div className="mt-4 flex flex-wrap gap-4">
+              <div className="mt-4 flex flex-wrap gap-6">
                 {[
                   { label: 'Activities', value: activities.length },
                   { label: 'Total Distance', value: formatDistance(totalDist) },
                   { label: 'Total Time', value: formatDuration(totalTime) },
                 ].map(({ label, value }) => (
-                  <div key={label} className="text-center">
+                  <div key={label}>
                     <p className="text-xl font-bold font-mono">{value}</p>
                     <p className="text-[11px] text-text-muted uppercase tracking-wider mt-0.5">{label}</p>
                   </div>
@@ -126,7 +134,55 @@ export default function ProfilePage() {
           </div>
         </motion.div>
 
-        {/* ── Sport breakdown ── */}
+        {/* ── Year to Date (from Strava stats API) ── */}
+        {stats && (
+          <motion.div variants={item} initial="initial" animate="animate">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="w-4 h-4 text-text-secondary" />
+              <h2 className="font-semibold text-text-primary">Year to Date</h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <StatTile label="Ride Distance" value={formatDistance(stats.ytd_ride_totals.distance)} sub={`${stats.ytd_ride_totals.count} rides`} />
+              <StatTile label="Ride Time"     value={formatDuration(stats.ytd_ride_totals.moving_time)} />
+              <StatTile label="Run Distance"  value={formatDistance(stats.ytd_run_totals.distance)} sub={`${stats.ytd_run_totals.count} runs`} />
+              <StatTile label="Run Time"      value={formatDuration(stats.ytd_run_totals.moving_time)} />
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── All-time bests ── */}
+        {stats && (
+          <motion.div variants={item} initial="initial" animate="animate">
+            <div className="flex items-center gap-2 mb-3">
+              <Trophy className="w-4 h-4 text-text-secondary" />
+              <h2 className="font-semibold text-text-primary">All-Time Bests</h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <StatTile label="Longest Ride"  value={formatDistance(stats.biggest_ride_distance)} />
+              <StatTile label="Longest Run"   value={formatDistance(stats.longest_run_distance)} />
+              <StatTile label="Biggest Climb" value={`${Math.round(stats.biggest_climb_elevation_gain)} m`} />
+              <StatTile label="Total Logged"  value={stats.all_ride_totals.count + stats.all_run_totals.count} sub="activities ever" />
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── All-time totals ── */}
+        {stats && (
+          <motion.div variants={item} initial="initial" animate="animate">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="w-4 h-4 text-text-secondary" />
+              <h2 className="font-semibold text-text-primary">All-Time Totals</h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <StatTile label="Total Ride Dist"  value={formatDistance(stats.all_ride_totals.distance)} />
+              <StatTile label="Total Ride Time"  value={formatDuration(stats.all_ride_totals.moving_time)} />
+              <StatTile label="Total Run Dist"   value={formatDistance(stats.all_run_totals.distance)} />
+              <StatTile label="Total Run Time"   value={formatDuration(stats.all_run_totals.moving_time)} />
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── Activity breakdown ── */}
         {sportSummary.length > 0 && (
           <motion.div variants={item} initial="initial" animate="animate"
             className="glass-panel rounded-2xl p-6"
