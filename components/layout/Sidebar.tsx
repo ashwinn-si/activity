@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Activity, TrendingUp, Home, GitCompare, Trophy } from 'lucide-react';
+import { Activity, TrendingUp, Home, GitCompare, Trophy, User } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 
 const navItems = [
@@ -12,6 +12,7 @@ const navItems = [
   { href: '/stats', icon: TrendingUp, label: 'Stats' },
   { href: '/records', icon: Trophy, label: 'Records' },
   { href: '/compare', icon: GitCompare, label: 'Compare' },
+  { href: '/profile', icon: User, label: 'Profile' },
 ];
 
 export function Sidebar() {

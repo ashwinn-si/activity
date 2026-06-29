@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Activity, TrendingUp, GitCompare, Trophy } from 'lucide-react';
+import { Home, Activity, GitCompare, Trophy, User } from 'lucide-react';
 
 const navItems = [
   { href: '/', icon: Home, label: 'Home' },
   { href: '/activities', icon: Activity, label: 'Activities' },
-  { href: '/stats', icon: TrendingUp, label: 'Stats' },
   { href: '/records', icon: Trophy, label: 'Records' },
   { href: '/compare', icon: GitCompare, label: 'Compare' },
+  { href: '/profile', icon: User, label: 'Profile' },
 ];
 
 export function BottomNav() {
