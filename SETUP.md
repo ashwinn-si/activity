@@ -1,224 +1,140 @@
-# Strava Dashboard Setup
+# Strava Hub — Setup Reference
 
-Professional Strava activity dashboard built with Next.js, Tailwind CSS, and Framer Motion.
+## Prerequisites
 
-## Quick Start
+- Node.js 18+
+- MongoDB Atlas account (free tier sufficient)
+- Strava account with recorded activities
 
-### 1. Get Strava API Credentials
+## Environment Variables
 
-See [GET_CREDENTIALS.md](GET_CREDENTIALS.md) for detailed instructions. You need:
-
-- **Client ID**: Your app's unique identifier
-- **Client Secret**: Keep this secret!
-- **Refresh Token**: Obtain by completing OAuth flow with proper scopes (`activity:read_all`)
-
-### 2. Set Up MongoDB
-
-Create a free MongoDB Atlas cluster at https://mongodb.com/atlas, then get your connection URI.
-
-### 3. Set Environment Variables
-
-Update `.env.local`:
+Create `.env.local` in the project root:
 
 ```env
-MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/stravaDashboard?retryWrites=true&w=majority
 STRAVA_CLIENT_ID=your_client_id
 STRAVA_CLIENT_SECRET=your_client_secret
 STRAVA_REFRESH_TOKEN=your_refresh_token
+MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/strava_cache
 ```
 
-⚠️ Never commit `.env.local` — it's in `.gitignore`
+See [GET_CREDENTIALS.md](GET_CREDENTIALS.md) for the Strava OAuth flow.
 
-### 4. Install & Run
+## Install & Run
 
 ```bash
 npm install
-npm run dev
+npm run dev       # http://localhost:3000
+npm run build     # production build
+npm start         # production server
+npm run lint      # lint
 ```
 
-Open http://localhost:3000
-
-On first load, MongoDB collections are populated automatically from the Strava API. Subsequent loads within 15 minutes are served from MongoDB.
-
-## Features
-
-### 📊 Dashboard
-- **Period Selection**: Last 7/15/30 days or custom date range
-- **Activity Stats**: Total distance, time, and count by period
-- **Activity Breakdown**: Distance and time by activity type (Ride, Run, Walk, etc.)
-- **Recent Activities**: Last 5 activities with quick preview
-- **Responsive**: Works on mobile, tablet, and desktop
-
-### 🚴 Activities Page
-- **Pagination**: 10 activities per page with navigation
-- **Filtering**: Filter by activity type
-- **Sorting**: Sort by date, distance, or elevation gain
-- **Activity Cards**: Rich preview with all key stats
-- **Direct Links**: Click to view full activity details
-
-### 📈 Activity Details
-- **Key Stats**: Distance, time, pace/speed, heart rate
-- **Distance vs Time Chart**: Visual progress throughout activity
-- **Pace/Speed Chart**: How your pace varied during the activity
-- **Heart Rate Graph**: HR trends (if available)
-- **Elevation Profile**: Altitude changes throughout activity
-
-### 📋 Stats Page
-- **Year-to-Date**: Running total for current year by activity type
-- **All-Time Records**: Longest rides/runs, most elevation gained
-- **Activity Counts**: Total activities by type
+On first load, MongoDB collections are populated automatically from the Strava API. Subsequent loads within 15 minutes are served from the database.
 
 ## Pages & Routes
 
-| Route | Page | Features |
-|-------|------|----------|
-| `/` | Dashboard | Stats overview, activity breakdown, recent activities |
-| `/activities` | Activities | Paginated list, filters, sort options |
-| `/activities/:id` | Activity Detail | Complete stats, charts, progress visualization |
-| `/stats` | Statistics | YTD aggregates, all-time records, trends |
+| Route | Description |
+|---|---|
+| `/` | Dashboard — totals, sport breakdown, recent activities |
+| `/activities` | Paginated list with filter/sort |
+| `/activities/:id` | Detail — charts, km splits, best efforts |
+| `/stats` | Year-to-date aggregates and trends |
+| `/records` | Personal Records board per sport type |
+| `/compare` | Side-by-side session comparison |
 
 ## Project Architecture
 
 ```
 app/
-├── page.tsx                      # Dashboard with stats & charts
+├── page.tsx                      # Dashboard
 ├── activities/
-│   ├── page.tsx                 # List with pagination
-│   └── [id]/page.tsx            # Detail view with charts
-├── stats/page.tsx               # Aggregated statistics
-├── api/
-│   ├── athlete/route.ts         # Get athlete profile (DB-cached)
-│   ├── activities/route.ts      # List activities (DB-cached)
-│   ├── activities/[id]/route.ts # Get activity detail (DB-cached)
-│   └── debug/route.ts           # Debug credentials
-└── layout.tsx                   # Root layout & navigation
+│   ├── page.tsx                  # List (paginated, filterable)
+│   └── [id]/page.tsx             # Detail view with all charts
+├── stats/page.tsx                # Aggregated statistics
+├── records/page.tsx              # Personal Records board
+├── compare/page.tsx              # Head-to-head session compare
+└── api/
+    ├── athlete/route.ts          # Athlete profile (DB-cached)
+    ├── activities/route.ts       # Activity list (DB-cached, 15-min TTL)
+    ├── activities/[id]/route.ts  # Activity detail + streams (DB-cached)
+    └── debug/route.ts            # Credential health check
 
 components/
-├── cards/
-│   ├── StatCard.tsx            # Stat display card
-│   └── ActivityCard.tsx         # Activity preview
+├── cards/ActivityCard.tsx        # Activity list card
 ├── charts/
-│   ├── ProgressChart.tsx       # Distance vs Time
-│   ├── PaceChart.tsx           # Pace over distance
-│   ├── HeartRateChart.tsx      # HR over distance
-│   └── ElevationChart.tsx      # Elevation profile
+│   ├── PaceChart.tsx             # Pace/speed over distance
+│   ├── HeartRateChart.tsx        # HR over distance
+│   ├── ElevationChart.tsx        # Elevation profile
+│   └── ProgressChart.tsx         # Distance vs time
 ├── layout/
-│   ├── Sidebar.tsx             # Desktop navigation
-│   ├── BottomNav.tsx           # Mobile navigation
-│   ├── Topbar.tsx              # Mobile header
-│   └── PageWrapper.tsx         # Page transitions
-└── ui/
-    ├── Badge.tsx               # Status badges
-    ├── Skeleton.tsx            # Loading state
-    └── EmptyState.tsx          # No data state
+│   ├── Sidebar.tsx               # Desktop navigation + theme toggle
+│   ├── BottomNav.tsx             # Mobile navigation
+│   └── PageWrapper.tsx           # Page transitions
+├── ui/
+│   ├── SessionPicker.tsx         # Custom sport-aware activity selector
+│   ├── Badge.tsx                 # Sport type badges
+│   ├── Skeleton.tsx              # Loading skeletons
+│   └── EmptyState.tsx            # No-data state
+├── KmSplitTable.tsx              # Per-km time breakdown
+├── BestEffortsTable.tsx          # Fastest times over standard distances
+└── ThemeToggle.tsx               # Dark/light mode button
+
+utils/
+├── sportConfig.ts                # Central icon/color/label for all Strava sports
+└── formatters.ts                 # Distance, pace, speed, duration
+
+store/
+├── useStravaStore.ts             # Activity data + fetch actions (Zustand)
+└── useThemeStore.ts              # Dark/light theme (Zustand)
 
 lib/
-├── strava.ts                   # Strava API client
-└── mongodb.ts                  # Mongoose connection + TTL helper
+├── strava.ts                     # Strava API client with auto token refresh
+└── mongodb.ts                    # Mongoose connection + isCacheStale()
 
 models/
-├── Activity.ts                 # Activities collection
-├── AthleteCache.ts             # Athlete + stats document
-├── ActivityDetailCache.ts      # Activity detail + streams
-└── CacheMetadata.ts            # Cache freshness tracking
-
-store/useStravaStore.ts         # Zustand state management
-utils/formatters.ts             # Format utilities
+├── Activity.ts                   # Activities collection
+├── AthleteCache.ts               # Athlete profile (singleton)
+├── ActivityDetailCache.ts        # Activity detail + streams
+└── CacheMetadata.ts              # lastRefreshed per data type
 ```
 
-## Tech Stack
+## Adding Sport Support
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js (App Router) |
-| Database | MongoDB (Mongoose) |
-| Styling | Tailwind CSS v4 |
-| Animation | Framer Motion |
-| State | Zustand |
-| Charts | Recharts |
-| Icons | Lucide React |
-| Dates | date-fns |
+The app is fully generic. Any sport type Strava returns is handled automatically via `utils/sportConfig.ts`. Known sports (Run, Ride, Walk, Swim, Hike, WeightTraining, Yoga, and 30+ more) have specific icons and colors. Unknown future sport types get a deterministic color derived from the sport name and a generic icon.
+
+No code changes are needed when you start a new sport type on Strava.
 
 ## Security
 
-✅ **Server-Side Only**: All credentials are processed server-side
-✅ **Never Exposed**: Browser only receives JSON data
-✅ **MongoDB Cache**: Data served from DB — Strava API called at most every 15 min
-✅ **Secure Refresh**: Automatic token refresh before expiration
+All Strava credentials are server-side only. The browser receives JSON responses — never the Client ID, Secret, or Refresh Token.
 
-Data flow:
 ```
-Browser → Next.js API Route → MongoDB (cache hit) → Browser
-Browser → Next.js API Route → Strava API → MongoDB (upsert) → Browser
+Browser → Next.js API Route → MongoDB (cache hit) → JSON
+Browser → Next.js API Route → Strava API → MongoDB (upsert) → JSON
 ```
-
-## Development
-
-```bash
-# Start dev server
-npm run dev
-
-# Build for production
-npm run build
-
-# Start production server
-npm start
-
-# Run linter
-npm run lint
-```
-
-### Debug Mode
-
-Check credential status:
-```bash
-curl http://localhost:3000/api/debug
-```
-
-## Rate Limits
-
-Strava API limits:
-- **200 requests** per 15 minutes
-- **2,000 requests** per day
-
-With MongoDB caching (15-min TTL), the app makes at most 2 Strava requests per 15-minute window (activities + athlete). Activity detail pages are cached permanently, so each unique activity only costs 1 Strava API call ever.
 
 ## Troubleshooting
 
 **"Authorization Error"**
-- Refresh token is invalid or expired
-- See [GET_CREDENTIALS.md](GET_CREDENTIALS.md) to get a new one
+Refresh token invalid or expired. See [GET_CREDENTIALS.md](GET_CREDENTIALS.md) to generate a new one.
 
-**"MONGODB_URI environment variable is not set"**
-- Add `MONGODB_URI` to `.env.local`
-- See Step 2 above for Atlas setup
+**"MONGODB_URI not set"**
+Add `MONGODB_URI` to `.env.local`. Restart the dev server after editing env files.
 
-**"Activities not loading"**
-- Check `.env.local` has all four variables (including `MONGODB_URI`)
-- Run `/api/debug` endpoint to verify Strava credentials
-- Check browser console for errors
+**Activities not loading**
+Check all four env vars are set. Hit `/api/debug` to verify Strava credentials.
 
 **Charts not showing**
-- Some activities may not have all stream data (HR, altitude)
-- Charts only appear if data is available
+Some activities lack stream data (HR, altitude). Charts appear only when data is available.
 
 **Data seems stale**
-- Click the ↻ refresh button to force-fetch from Strava
-- Or see [CACHING.md](CACHING.md) for manual cache expiry
+Click the ↻ button on the dashboard to force a fresh Strava fetch. See [CACHING.md](CACHING.md) for manual cache expiry.
 
 ## Documentation
 
-- **[README.md](README.md)** — Project overview
-- **[STYLE.md](STYLE.md)** — Design system & colors
-- **[GET_CREDENTIALS.md](GET_CREDENTIALS.md)** — OAuth setup
-- **[CACHING.md](CACHING.md)** — MongoDB caching strategy
-- **[DEPLOY.md](DEPLOY.md)** — Deploy to Vercel
-
-## Next Steps
-
-1. ✅ Set up Strava credentials
-2. ✅ Set up MongoDB Atlas
-3. ✅ Run development server
-4. 🎯 Explore dashboard & activities
-5. 📊 Check your stats page
-6. 📱 Test on mobile
+- [README.md](README.md) — Project overview
+- [USER_GUIDE.md](USER_GUIDE.md) — New user setup & feature walkthrough
+- [GET_CREDENTIALS.md](GET_CREDENTIALS.md) — Strava OAuth flow
+- [CACHING.md](CACHING.md) — MongoDB caching strategy
+- [DEPLOY.md](DEPLOY.md) — Deploy to Vercel
+- [STYLE.md](STYLE.md) — Design system & colors

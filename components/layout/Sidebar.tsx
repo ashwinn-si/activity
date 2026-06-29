@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Activity, TrendingUp, Home, GitCompare, Trophy } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const navItems = [
   { href: '/', icon: Home, label: 'Dashboard' },
@@ -48,10 +49,9 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="pt-6 border-t border-white/5">
-        <p className="text-xs text-text-muted">
-          Powered by Strava API
-        </p>
+      <div className="pt-6 border-t border-border flex items-center justify-between">
+        <p className="text-xs text-text-muted">Powered by Strava API</p>
+        <ThemeToggle />
       </div>
     </aside>
   );

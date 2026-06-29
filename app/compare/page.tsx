@@ -8,10 +8,10 @@ import {
   Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import {
-  Bike, Footprints, PersonStanding, Activity,
   GitCompare, ArrowLeft, TrendingUp, TrendingDown,
   Minus, ChevronRight, RotateCcw,
 } from 'lucide-react';
+import { getSportMeta } from '@/utils/sportConfig';
 import Link from 'next/link';
 import useStravaStore from '@/store/useStravaStore';
 import { formatDistance, formatDuration, formatPace, formatSpeed } from '@/utils/formatters';
@@ -39,15 +39,6 @@ interface SessionData { activity: Activity; streams: Streams }
 const COLOR_A = '#3b82f6'; // blue
 const COLOR_B = '#f97316'; // orange
 
-const SPORT_META: Record<string, {
-  icon: React.ComponentType<{ className?: string }>;
-  color: string; bg: string; border: string; ring: string; label: string;
-}> = {
-  Run:  { icon: Footprints,     color: 'text-[#3b82f6]', bg: 'bg-[#3b82f6]/10', border: 'border-[#3b82f6]/30', ring: 'ring-[#3b82f6]/40', label: 'Run'  },
-  Ride: { icon: Bike,           color: 'text-[#f97316]', bg: 'bg-[#f97316]/10', border: 'border-[#f97316]/30', ring: 'ring-[#f97316]/40', label: 'Ride' },
-  Walk: { icon: PersonStanding, color: 'text-[#22c55e]', bg: 'bg-[#22c55e]/10', border: 'border-[#22c55e]/30', ring: 'ring-[#22c55e]/40', label: 'Walk' },
-};
-const FALLBACK_META = { icon: Activity, color: 'text-[#a855f7]', bg: 'bg-[#a855f7]/10', border: 'border-[#a855f7]/30', ring: 'ring-[#a855f7]/40', label: '—' };
 
 /* ─── helpers ────────────────────────────────────────────────── */
 function fmtSplit(s: number) {
@@ -117,7 +108,7 @@ function SportTypeStep({
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {types.map((type) => {
-          const m = SPORT_META[type] ?? FALLBACK_META;
+          const m = getSportMeta(type);
           const Icon = m.icon;
           return (
             <motion.button
@@ -126,13 +117,17 @@ function SportTypeStep({
               whileTap={{ scale: 0.97 }}
               transition={{ type: 'spring', stiffness: 300, damping: 22 }}
               onClick={() => onSelect(type)}
-              className={`glass-panel rounded-2xl p-5 flex flex-col items-start gap-3 border ${m.border} hover:${m.ring} hover:ring-2 transition-all duration-200 cursor-pointer text-left`}
+              className="glass-panel rounded-2xl p-5 flex flex-col items-start gap-3 border transition-all duration-200 cursor-pointer text-left"
+              style={{ borderColor: `${m.hex}35` }}
             >
-              <div className={`p-2.5 rounded-xl ${m.bg} ${m.color}`}>
+              <div
+                className="p-2.5 rounded-xl"
+                style={{ background: `${m.hex}18`, color: m.hex }}
+              >
                 <Icon className="w-5 h-5" />
               </div>
               <div>
-                <p className={`font-semibold text-lg ${m.color}`}>{type}</p>
+                <p className="font-semibold text-lg" style={{ color: m.hex }}>{m.label}</p>
                 <p className="text-text-secondary text-sm">{counts[type]} sessions</p>
               </div>
               <ChevronRight className="w-4 h-4 text-text-muted self-end" />
@@ -183,7 +178,7 @@ function StatCard({
 
 function SessionHeader({ sess, slot }: { sess: SessionData; slot: 'A' | 'B' }) {
   const color = slot === 'A' ? COLOR_A : COLOR_B;
-  const m = SPORT_META[sess.activity.type] ?? FALLBACK_META;
+  const m = getSportMeta(sess.activity.type);
   const Icon = m.icon;
   return (
     <div
@@ -210,10 +205,10 @@ function SessionHeader({ sess, slot }: { sess: SessionData; slot: 'A' | 'B' }) {
           <span className="text-text-muted">·</span>
           <span>{formatDuration(sess.activity.moving_time)}</span>
           <span className="text-text-muted">·</span>
-          <span>{formatPace(sess.activity.average_speed)}</span>
+          <span>{m.usePace ? formatPace(sess.activity.average_speed) : formatSpeed(sess.activity.average_speed)}</span>
         </div>
       </div>
-      <div className={`p-2 rounded-xl ${m.bg} ${m.color} flex-shrink-0`}>
+      <div className="p-2 rounded-xl flex-shrink-0" style={{ background: `${m.hex}18`, color: m.hex }}>
         <Icon className="w-4 h-4" />
       </div>
     </div>
@@ -503,11 +498,14 @@ export default function ComparePage() {
 
               {/* Sport badge */}
               <div className="flex items-center gap-2 mb-6">
-                {(() => { const m = SPORT_META[selectedSport] ?? FALLBACK_META; const Icon = m.icon;
+                {(() => { const m = getSportMeta(selectedSport); const Icon = m.icon;
                   return (
-                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${m.bg} ${m.color} border ${m.border} text-sm font-semibold`}>
+                    <div
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-semibold"
+                      style={{ background: `${m.hex}15`, color: m.hex, borderColor: `${m.hex}35` }}
+                    >
                       <Icon className="w-3.5 h-3.5" />
-                      {selectedSport}
+                      {m.label}
                     </div>
                   );
                 })()}

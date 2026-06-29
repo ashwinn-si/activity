@@ -1,12 +1,11 @@
-# Deploying to Vercel with Custom Domain
+# Deploying to Vercel
 
-Complete guide to deploy Strava Dashboard to Vercel with your custom domain `activity.ashwinsi.in`.
+Complete guide to deploy Strava Hub to Vercel, optionally with a custom domain.
 
 ## Prerequisites
 
 - Vercel account (free at https://vercel.com)
 - GitHub account (to connect your repo)
-- Custom domain registered (you already have `activity.ashwinsi.in`)
 - Strava API credentials with correct OAuth settings
 
 ## Step 1: Prepare Your Project for Vercel
@@ -64,7 +63,7 @@ Click **"Deploy"** to create the project
 1. Go to your Vercel project dashboard
 2. Click **"Settings"** → **"Domains"**
 3. Click **"Add"**
-4. Enter your domain: `activity.ashwinsi.in`
+4. Enter your domain: `your-custom-domain.com`
 5. Click **"Add"**
 
 ### 3.2 Configure DNS Records
@@ -82,7 +81,7 @@ ns4.vercel-dns.com
 
 ### 3.3 Update Domain Registrar
 
-1. Log in to where you registered `activity.ashwinsi.in`
+1. Log in to where you registered `your-custom-domain.com`
 2. Find **DNS Settings** or **Nameservers**
 3. Replace existing nameservers with Vercel's 4 nameservers
 4. Save changes
@@ -92,7 +91,7 @@ ns4.vercel-dns.com
 Verify DNS is live:
 
 ```bash
-nslookup activity.ashwinsi.in
+nslookup your-custom-domain.com
 # Should show Vercel's nameservers
 ```
 
@@ -104,23 +103,23 @@ nslookup activity.ashwinsi.in
 
 1. Go to https://www.strava.com/settings/api
 2. Click on your app
-3. Update **"Authorization Callback Domain"** to: `activity.ashwinsi.in`
-4. Update **"Website"** to: `https://activity.ashwinsi.in`
+3. Update **"Authorization Callback Domain"** to: `your-custom-domain.com`
+4. Update **"Website"** to: `https://your-custom-domain.com`
 5. Save
 
 ### 4.2 Get New Refresh Token
 
 Since you changed the OAuth domain, you need a new refresh token:
 
-1. Visit this URL in your browser (replace with your Client ID):
+1. Visit this URL in your browser (replace `YOUR_CLIENT_ID` and `YOUR_DOMAIN`):
 
 ```
-https://www.strava.com/oauth/authorize?client_id=257631&response_type=code&redirect_uri=https://activity.ashwinsi.in&scope=activity:read_all
+https://www.strava.com/oauth/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=https://YOUR_DOMAIN&scope=activity:read_all
 ```
 
 2. Click **"Authorize"**
 
-3. You'll be redirected to: `https://activity.ashwinsi.in?code=XXXXX...`
+3. You'll be redirected to: `https://YOUR_DOMAIN?code=XXXXX...`
 
 4. Copy the **code** from the URL
 
@@ -128,9 +127,9 @@ https://www.strava.com/oauth/authorize?client_id=257631&response_type=code&redir
 
 ```bash
 curl -X POST https://www.strava.com/oauth/token \
-  -d client_id=257631 \
-  -d client_secret=43ee27de389df79d1c70119ad9bceb07327e355a \
-  -d code=60b10f7576e3594522c476c48ca8ffb751b1a632 \
+  -d client_id=YOUR_CLIENT_ID \
+  -d client_secret=YOUR_CLIENT_SECRET \
+  -d code=CODE_FROM_ABOVE \
   -d grant_type=authorization_code
 ```
 
@@ -147,8 +146,8 @@ curl -X POST https://www.strava.com/oauth/token \
 | Name                   | Value                                  |
 | ---------------------- | -------------------------------------- |
 | `MONGODB_URI`          | Your MongoDB Atlas connection string   |
-| `STRAVA_CLIENT_ID`     | `257631`                               |
-| `STRAVA_CLIENT_SECRET` | Your client secret                     |
+| `STRAVA_CLIENT_ID`     | Your Strava client ID                  |
+| `STRAVA_CLIENT_SECRET` | Your Strava client secret              |
 | `STRAVA_REFRESH_TOKEN` | Your **NEW** refresh token from Step 4 |
 
 Click **"Save"** for each variable
@@ -167,7 +166,7 @@ Click **"Save"** for each variable
 ### 6.1 Test the Domain
 
 1. Wait for DNS to propagate (check with `nslookup` from Step 3.3)
-2. Visit https://activity.ashwinsi.in
+2. Visit https://your-custom-domain.com
 3. Check if your activities load
 
 ### 6.2 Debug Endpoint
@@ -175,7 +174,7 @@ Click **"Save"** for each variable
 If issues occur, check:
 
 ```bash
-curl https://activity.ashwinsi.in/api/debug
+curl https://your-custom-domain.com/api/debug
 ```
 
 Should return:
@@ -210,14 +209,14 @@ npm run dev
 
 ### Domain not working
 
-- ✅ Check DNS propagated: `nslookup activity.ashwinsi.in`
+- ✅ Check DNS propagated: `nslookup your-custom-domain.com`
 - ✅ Vercel shows green checkmark on domain
 - ✅ Wait up to 48 hours for DNS
 
 ### "Authorization Error" on /api/debug
 
 - ✅ Refresh token from Step 4.2 is wrong
-- ✅ Strava OAuth domain not updated to `activity.ashwinsi.in`
+- ✅ Strava OAuth domain not updated to `your-custom-domain.com`
 - ✅ Environment variables not redeployed
 - ✅ Try Step 4.2 again with correct domain
 
@@ -268,13 +267,9 @@ Vercel automatically redeploys on push to `main`!
 - ✅ New refresh token obtained
 - ✅ Environment variables set in Vercel
 - ✅ Project redeployed
-- ✅ https://activity.ashwinsi.in working
+- ✅ https://your-custom-domain.com working
 - ✅ `/api/debug` returns "ok"
 
 ## Live!
 
-Your Strava Dashboard is now live at:
-
-### 🚀 https://activity.ashwinsi.in
-
-Share with friends! Track activities in style! 📊🚴‍♂️🏃‍♀️
+Your Strava Hub is now live. Share it with friends or keep it private — it's your training data.

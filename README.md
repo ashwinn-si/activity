@@ -1,123 +1,119 @@
-# Strava Dashboard
+# Strava Hub
 
-Professional activity tracking dashboard for Strava. Built with Next.js, Tailwind CSS, and Framer Motion.
+Personal activity dashboard for Strava — visualize splits, compare sessions, and track personal records across every sport you log.
+
+> New user? See [USER_GUIDE.md](USER_GUIDE.md) for full setup instructions.
 
 ## Features
 
-✅ **Dashboard Overview**
-- Quick stats (distance, time, activity count)
-- Activity type breakdown (Ride, Run, Walk, etc.)
-- Date range selector (Last 7/15/30 days or custom)
-- Recent activities preview
+**Dashboard**
+- Activity totals by period (7 / 15 / 30 days or custom range)
+- Sport-type breakdown and recent activity preview
 
-✅ **Activities Page**
-- Paginated activity list (10 per page)
-- Filter by activity type
-- Sort by date, distance, or elevation
-- Quick navigation with prev/next buttons
+**Activities**
+- Paginated, filterable, sortable list
+- Activity cards with distance, time, pace/speed, elevation, and heart rate
 
-✅ **Activity Details**
-- Comprehensive stats (distance, time, pace, speed, heart rate)
-- Distance vs Time progress chart
-- Pace/Speed visualization
-- Heart rate graph (if available)
-- Elevation profile chart
+**Activity Detail**
+- Key stats, pace/speed chart, elevation profile, heart rate chart
+- Km Split Table — per-kilometre time, delta vs previous, fastest/slowest tags
+- Best Efforts — fastest time over standard distances (400 m → marathon) for any distance-based sport
 
-✅ **Stats Page**
-- Year-to-date aggregates
-- All-time personal records
-- Monthly trends
-- Activity type breakdowns
+**Records**
+- Personal bests per sport type, auto-generated from your actual history
+- Covers any Strava sport: running, cycling, swimming, hiking, yoga, weight training, and more
+- PRs: longest distance, best pace/speed, top speed, most elevation, longest duration
 
-✅ **Design**
-- Dark theme with custom color system
-- Responsive layout (mobile, tablet, desktop)
-- Smooth Framer Motion animations
-- Accessible navigation
+**Compare**
+- 3-step flow: pick sport → pick two sessions → see results
+- Side-by-side split table, stat cards with winner highlighting, overlay pace/HR/elevation charts
+
+**UI**
+- Dark and light mode toggle
+- Responsive layout (mobile bottom nav, desktop sidebar)
+- Smooth Framer Motion animations, Recharts data visualisations
 
 ## Quick Start
 
-1. **Get Strava Credentials** — Read [GET_CREDENTIALS.md](GET_CREDENTIALS.md)
+```bash
+# 1. Clone & install
+npm install
 
-2. **Set up MongoDB** — Free Atlas cluster at https://mongodb.com/atlas
+# 2. Create .env.local with your credentials
+cp .env.example .env.local   # then fill in the four values
 
-3. **Set environment variables** in `.env.local`:
-   ```env
-   MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/stravaDashboard?retryWrites=true&w=majority
-   STRAVA_CLIENT_ID=your_client_id
-   STRAVA_CLIENT_SECRET=your_client_secret
-   STRAVA_REFRESH_TOKEN=your_refresh_token
-   ```
+# 3. Run
+npm run dev
+```
 
-4. **Install & Run**
-   ```bash
-   npm install
-   npm run dev
-   ```
+Open http://localhost:3000. See [USER_GUIDE.md](USER_GUIDE.md) for Strava OAuth and MongoDB setup.
 
-5. **Visit** http://localhost:3000
+## Environment Variables
+
+| Variable | Description |
+|---|---|
+| `STRAVA_CLIENT_ID` | From strava.com/settings/api |
+| `STRAVA_CLIENT_SECRET` | From strava.com/settings/api |
+| `STRAVA_REFRESH_TOKEN` | OAuth refresh token with `activity:read_all` scope |
+| `MONGODB_URI` | MongoDB Atlas connection string |
 
 ## Project Structure
 
 ```
-├── app/
-│   ├── page.tsx                # Dashboard
-│   ├── activities/page.tsx     # Activity list
-│   ├── activities/[id]/page.tsx # Activity detail
-│   ├── stats/page.tsx          # Statistics
-│   └── api/                    # Backend routes (DB-cached)
-├── components/
-│   ├── cards/                  # StatCard, ActivityCard
-│   ├── charts/                 # Data visualizations
-│   ├── layout/                 # Navigation & structure
-│   └── ui/                     # Reusable components
-├── lib/
-│   ├── strava.ts               # Strava API helpers
-│   └── mongodb.ts              # Mongoose connection + TTL
-├── models/                     # Mongoose models (cache collections)
-├── store/useStravaStore.ts     # State management
-└── utils/formatters.ts         # Format utilities
+app/
+├── page.tsx                       # Dashboard
+├── activities/
+│   ├── page.tsx                   # Activity list
+│   └── [id]/page.tsx              # Activity detail
+├── stats/page.tsx                 # Statistics
+├── records/page.tsx               # Personal Records board
+├── compare/page.tsx               # Side-by-side comparison
+└── api/                           # Strava API routes (DB-cached)
+
+components/
+├── cards/ActivityCard.tsx         # Activity list card
+├── charts/                        # Pace, HR, elevation, progress charts
+├── layout/                        # Sidebar, BottomNav, PageWrapper
+├── ui/
+│   ├── SessionPicker.tsx          # Custom activity selector
+│   └── Badge.tsx, Skeleton.tsx, EmptyState.tsx
+├── KmSplitTable.tsx               # Per-km split breakdown
+└── BestEffortsTable.tsx           # Fastest times over standard distances
+
+utils/
+├── sportConfig.ts                 # Icon, color, label for every Strava sport type
+└── formatters.ts                  # Distance, pace, speed, duration formatters
+
+store/useStravaStore.ts            # Zustand store (activities, streams, loading)
+store/useThemeStore.ts             # Dark/light mode
+lib/strava.ts                      # Strava API client (token refresh)
+lib/mongodb.ts                     # Mongoose connection + TTL helper
+models/                            # MongoDB cache collections
 ```
 
 ## Tech Stack
 
-- **Framework**: Next.js (App Router)
-- **Database**: MongoDB (Mongoose) — server-side cache
-- **Styling**: Tailwind CSS v4
-- **Animation**: Framer Motion
-- **Charts**: Recharts
-- **Icons**: Lucide React
-- **State**: Zustand
-- **Date Utils**: date-fns
+| | |
+|---|---|
+| Framework | Next.js (App Router) |
+| Database | MongoDB (Mongoose) |
+| Styling | Tailwind CSS v4 |
+| Animation | Framer Motion |
+| Charts | Recharts |
+| Icons | Lucide React |
+| State | Zustand |
 
 ## Caching
 
-Activities and athlete data are cached in MongoDB with a **15-minute TTL**. Activity detail + streams are cached permanently (streams are immutable). The ↻ button forces a fresh Strava API call. See [CACHING.md](CACHING.md) for details.
+Activities list and athlete data: 15-minute TTL in MongoDB. Activity detail + streams: cached permanently (immutable after recording). The ↻ button forces a fresh Strava API call. See [CACHING.md](CACHING.md).
 
-## Security
+## Docs
 
-All Strava credentials are **server-side only**. Your browser never sees the Client ID, Secret, or Refresh Token. Data flow: Browser → Next.js API Routes → MongoDB / Strava API → JSON response.
-
-## Development
-
-```bash
-npm run dev       # Dev server
-npm run build     # Production build
-npm start         # Production server
-npm run lint      # Linting
-```
-
-## Documentation
-
-- [SETUP.md](SETUP.md) — Initial setup & running locally
-- [GET_CREDENTIALS.md](GET_CREDENTIALS.md) — Strava OAuth setup
-- [DEPLOY.md](DEPLOY.md) — Deploy to Vercel with custom domain
-- [STYLE.md](STYLE.md) — Design system & colors
+- [USER_GUIDE.md](USER_GUIDE.md) — New user setup & feature walkthrough
+- [SETUP.md](SETUP.md) — Detailed local setup reference
+- [GET_CREDENTIALS.md](GET_CREDENTIALS.md) — Strava OAuth flow
 - [CACHING.md](CACHING.md) — MongoDB caching strategy
-
-## Rate Limits
-
-Strava allows 200 requests per 15 minutes / 2,000 per day. With MongoDB caching, the app makes at most 2 Strava requests per 15-minute window under normal use.
+- [DEPLOY.md](DEPLOY.md) — Deploy to Vercel
 
 ## License
 

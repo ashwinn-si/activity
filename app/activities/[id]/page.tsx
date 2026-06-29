@@ -12,10 +12,10 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { KmSplitTable } from '@/components/KmSplitTable';
-import { RouteMap } from '@/components/RouteMap';
 import { BestEffortsTable } from '@/components/BestEffortsTable';
 import { ArrowLeft, GitCompare } from 'lucide-react';
 import Link from 'next/link';
+import { getSportMeta, getSportBadgeVariant } from '@/utils/sportConfig';
 
 interface Activity {
   id: number;
@@ -124,11 +124,7 @@ export default function ActivityDetailPage() {
     );
   }
 
-  const sportColors: Record<string, 'default' | 'run' | 'ride' | 'walk' | 'pr'> = {
-    Run: 'run',
-    Ride: 'ride',
-    Walk: 'walk',
-  };
+  const sportMeta = getSportMeta(activity.type);
 
   return (
     <main className="flex-1 overflow-auto pb-20 lg:pb-6">
@@ -136,7 +132,7 @@ export default function ActivityDetailPage() {
         {/* Back Button + Compare */}
         <div className="flex items-center justify-between mb-6">
           <Link href="/activities">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 transition-all duration-300 text-sm font-medium">
+            <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-text-secondary hover:text-text-primary hover:bg-muted transition-all duration-300 text-sm font-medium">
               <ArrowLeft className="w-4 h-4" />
               Back to Activities
             </button>
@@ -171,7 +167,7 @@ export default function ActivityDetailPage() {
                 })}
               </p>
             </div>
-            <Badge variant={sportColors[activity.type]}>{activity.type}</Badge>
+            <Badge variant={getSportBadgeVariant(activity.type)}>{sportMeta.label}</Badge>
           </div>
         </motion.div>
 
@@ -196,8 +192,10 @@ export default function ActivityDetailPage() {
               value: formatPacePerKm(activity.average_speed),
             },
             {
-              label: activity.type === 'Run' ? 'Avg Speed' : 'Avg Speed',
-              value: formatSpeed(activity.average_speed),
+              label: sportMeta.paceLabel,
+              value: sportMeta.usePace
+                ? formatPacePerKm(activity.average_speed)
+                : formatSpeed(activity.average_speed),
             },
             {
               label: 'Max Speed',
@@ -228,25 +226,6 @@ export default function ActivityDetailPage() {
               </motion.div>
             ))}
         </motion.div>
-
-        {/* Route Map */}
-        {(() => {
-          const polyline =
-            (activity as Record<string, unknown> & { map?: { polyline?: string; summary_polyline?: string } })
-              ?.map?.polyline ||
-            (activity as Record<string, unknown> & { map?: { polyline?: string; summary_polyline?: string } })
-              ?.map?.summary_polyline;
-          if (!polyline) return null;
-          return (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6"
-            >
-              <RouteMap polyline={polyline} sportType={activity.type} />
-            </motion.div>
-          );
-        })()}
 
         {/* Charts */}
         {streams && streams.distance?.data && streams.time?.data && streams.distance.data.length > 0 && (() => {
@@ -296,7 +275,7 @@ export default function ActivityDetailPage() {
               />
             </motion.div>
 
-            {activity.type === 'Run' && (
+            {activity.distance >= 400 && (
               <motion.div variants={item}>
                 <BestEffortsTable
                   distanceData={distData}

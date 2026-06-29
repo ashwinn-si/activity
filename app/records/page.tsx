@@ -3,19 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import {
-  Bike,
-  Footprints,
-  PersonStanding,
-  Trophy,
-  Ruler,
-  Timer,
-  TrendingUp,
-  Zap,
-  Mountain,
-  Activity,
-} from 'lucide-react';
+import { Trophy, Ruler, Timer, Zap, Mountain, TrendingUp } from 'lucide-react';
 import useStravaStore from '@/store/useStravaStore';
+import { getSportMeta } from '@/utils/sportConfig';
 import { formatDistance, formatDuration, formatPace, formatSpeed } from '@/utils/formatters';
 import { Skeleton } from '@/components/ui/Skeleton';
 
@@ -31,47 +21,6 @@ interface ActivitySummary {
   max_speed: number;
 }
 
-const sportMeta: Record<
-  string,
-  {
-    icon: React.ComponentType<{ className?: string }>;
-    color: string;
-    bg: string;
-    border: string;
-    accent: string;
-  }
-> = {
-  Run: {
-    icon: Footprints,
-    color: 'text-accent-run',
-    bg: 'bg-accent-run/10',
-    border: 'border-accent-run/25',
-    accent: 'var(--accent-run)',
-  },
-  Ride: {
-    icon: Bike,
-    color: 'text-accent-ride',
-    bg: 'bg-accent-ride/10',
-    border: 'border-accent-ride/25',
-    accent: 'var(--accent-ride)',
-  },
-  Walk: {
-    icon: PersonStanding,
-    color: 'text-accent-walk',
-    bg: 'bg-accent-walk/10',
-    border: 'border-accent-walk/25',
-    accent: 'var(--accent-walk)',
-  },
-};
-
-const DEFAULT_META = {
-  icon: Activity,
-  color: 'text-accent-pr',
-  bg: 'bg-accent-pr/10',
-  border: 'border-accent-pr/25',
-  accent: 'var(--accent-pr)',
-};
-
 interface PR {
   label: string;
   value: string;
@@ -83,13 +32,14 @@ interface PR {
 }
 
 function computePRs(activities: ActivitySummary[], type: string): PR[] {
+  const meta = getSportMeta(type);
   const list = activities.filter((a) => a.type === type && a.distance > 0);
   if (list.length === 0) return [];
 
   const prs: PR[] = [];
 
   // Longest distance
-  const longest = list.reduce((best, a) => (a.distance > best.distance ? a : best), list[0]);
+  const longest = list.reduce((b, a) => (a.distance > b.distance ? a : b), list[0]);
   prs.push({
     label: 'Longest Distance',
     value: formatDistance(longest.distance),
@@ -100,15 +50,12 @@ function computePRs(activities: ActivitySummary[], type: string): PR[] {
     date: longest.start_date,
   });
 
-  // Fastest pace / best speed
-  if (type === 'Run' || type === 'Walk') {
-    const fastest = list.reduce(
-      (best, a) => (a.average_speed > best.average_speed ? a : best),
-      list[0]
-    );
+  // Best pace or speed — generic based on sport meta
+  const fastest = list.reduce((b, a) => (a.average_speed > b.average_speed ? a : b), list[0]);
+  if (fastest.average_speed > 0) {
     prs.push({
-      label: 'Best Avg Pace',
-      value: formatPace(fastest.average_speed),
+      label: meta.usePace ? 'Best Avg Pace' : 'Best Avg Speed',
+      value: meta.usePace ? formatPace(fastest.average_speed) : formatSpeed(fastest.average_speed),
       sub: formatDistance(fastest.distance),
       icon: Zap,
       activityId: fastest.id,
@@ -117,41 +64,24 @@ function computePRs(activities: ActivitySummary[], type: string): PR[] {
     });
   }
 
-  if (type === 'Ride') {
-    const fastest = list.reduce(
-      (best, a) => (a.average_speed > best.average_speed ? a : best),
-      list[0]
-    );
-    prs.push({
-      label: 'Best Avg Speed',
-      value: formatSpeed(fastest.average_speed),
-      sub: formatDistance(fastest.distance),
-      icon: Zap,
-      activityId: fastest.id,
-      activityName: fastest.name,
-      date: fastest.start_date,
-    });
-
-    const topSpeed = list.reduce(
-      (best, a) => (a.max_speed > best.max_speed ? a : best),
-      list[0]
-    );
-    prs.push({
-      label: 'Top Speed',
-      value: formatSpeed(topSpeed.max_speed),
-      sub: formatDistance(topSpeed.distance),
-      icon: Zap,
-      activityId: topSpeed.id,
-      activityName: topSpeed.name,
-      date: topSpeed.start_date,
-    });
+  // Top speed (for non-pace sports)
+  if (!meta.usePace) {
+    const topSpeed = list.reduce((b, a) => (a.max_speed > b.max_speed ? a : b), list[0]);
+    if (topSpeed.max_speed > 0) {
+      prs.push({
+        label: 'Top Speed',
+        value: formatSpeed(topSpeed.max_speed),
+        sub: formatDistance(topSpeed.distance),
+        icon: Zap,
+        activityId: topSpeed.id,
+        activityName: topSpeed.name,
+        date: topSpeed.start_date,
+      });
+    }
   }
 
   // Most elevation
-  const hilliest = list.reduce(
-    (best, a) => (a.elevation_gain > best.elevation_gain ? a : best),
-    list[0]
-  );
+  const hilliest = list.reduce((b, a) => (a.elevation_gain > b.elevation_gain ? a : b), list[0]);
   if (hilliest.elevation_gain > 0) {
     prs.push({
       label: 'Most Elevation',
@@ -165,69 +95,45 @@ function computePRs(activities: ActivitySummary[], type: string): PR[] {
   }
 
   // Longest duration
-  const longest_time = list.reduce(
-    (best, a) => (a.moving_time > best.moving_time ? a : best),
-    list[0]
-  );
+  const longestTime = list.reduce((b, a) => (a.moving_time > b.moving_time ? a : b), list[0]);
   prs.push({
     label: 'Longest Duration',
-    value: formatDuration(longest_time.moving_time),
-    sub: formatDistance(longest_time.distance),
+    value: formatDuration(longestTime.moving_time),
+    sub: formatDistance(longestTime.distance),
     icon: Timer,
-    activityId: longest_time.id,
-    activityName: longest_time.name,
-    date: longest_time.start_date,
+    activityId: longestTime.id,
+    activityName: longestTime.name,
+    date: longestTime.start_date,
   });
 
   return prs;
 }
 
-function PRCard({ pr, accent }: { pr: PR; accent: string }) {
+function PRCard({ pr, hex }: { pr: PR; hex: string }) {
   const Icon = pr.icon;
   return (
-    <motion.div
-      whileHover={{ y: -2 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 22 }}
-    >
+    <motion.div whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 300, damping: 22 }}>
       <Link href={`/activities/${pr.activityId}`}>
         <div className="glass-panel glass-panel-hover rounded-2xl p-5 cursor-pointer h-full flex flex-col gap-3 relative overflow-hidden">
-          {/* top strip */}
-          <div
-            className="absolute top-0 left-0 right-0 h-0.5 opacity-60"
-            style={{ background: accent }}
-          />
+          <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: hex, opacity: 0.7 }} />
 
           <div className="flex items-start justify-between">
-            <div
-              className="p-2 rounded-xl [&>svg]:w-4 [&>svg]:h-4"
-              style={{
-                background: `color-mix(in srgb, ${accent} 12%, transparent)`,
-                color: accent,
-              }}
-            >
+            <div className="p-2 rounded-xl" style={{ background: `${hex}18`, color: hex }}>
               <Icon className="w-4 h-4" />
             </div>
-            <Trophy className="w-3.5 h-3.5 opacity-30 text-text-muted" />
+            <Trophy className="w-3.5 h-3.5 opacity-25 text-text-muted" />
           </div>
 
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-text-secondary font-medium mb-1">
-              {pr.label}
-            </p>
-            <p className="text-2xl font-mono font-bold text-text-primary leading-none">
-              {pr.value}
-            </p>
+            <p className="text-[10px] uppercase tracking-widest text-text-secondary font-medium mb-1">{pr.label}</p>
+            <p className="text-2xl font-mono font-bold text-text-primary leading-none">{pr.value}</p>
             <p className="text-xs text-text-secondary mt-1">{pr.sub}</p>
           </div>
 
-          <div className="mt-auto pt-3 border-t border-white/5">
+          <div className="mt-auto pt-3 border-t border-border">
             <p className="text-xs font-medium text-text-primary truncate">{pr.activityName}</p>
             <p className="text-[11px] text-text-muted mt-0.5">
-              {new Date(pr.date).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })}
+              {new Date(pr.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             </p>
           </div>
         </div>
@@ -236,77 +142,47 @@ function PRCard({ pr, accent }: { pr: PR; accent: string }) {
   );
 }
 
-function SportSummaryBar({
-  type,
-  activities,
-}: {
-  type: string;
-  activities: ActivitySummary[];
-}) {
+function SportSummaryBar({ type, activities }: { type: string; activities: ActivitySummary[] }) {
   const list = activities.filter((a) => a.type === type);
   const totalDist = list.reduce((s, a) => s + a.distance, 0);
   const totalTime = list.reduce((s, a) => s + a.moving_time, 0);
   const totalElev = list.reduce((s, a) => s + a.elevation_gain, 0);
-  const meta = sportMeta[type] ?? DEFAULT_META;
-
   return (
     <div className="flex flex-wrap gap-4 text-sm text-text-secondary">
-      <span>
-        <span className="font-semibold text-text-primary">{list.length}</span> sessions
-      </span>
-      <span>
-        <span className="font-semibold text-text-primary">{formatDistance(totalDist)}</span> total
-      </span>
-      <span>
-        <span className="font-semibold text-text-primary">{formatDuration(totalTime)}</span> moving
-      </span>
+      <span><span className="font-semibold text-text-primary">{list.length}</span> sessions</span>
+      <span><span className="font-semibold text-text-primary">{formatDistance(totalDist)}</span> total</span>
+      <span><span className="font-semibold text-text-primary">{formatDuration(totalTime)}</span> moving</span>
       {totalElev > 0 && (
-        <span>
-          <span className="font-semibold text-text-primary">{Math.round(totalElev)} m</span> climbed
-        </span>
+        <span><span className="font-semibold text-text-primary">{Math.round(totalElev)} m</span> climbed</span>
       )}
     </div>
   );
 }
 
-const container = {
-  animate: { transition: { staggerChildren: 0.07 } },
-};
-const item = {
-  initial: { opacity: 0, y: 16 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-};
+const container = { animate: { transition: { staggerChildren: 0.07 } } };
+const itemV = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
 
 export default function RecordsPage() {
   const { activities, loading, fetchAll } = useStravaStore();
   const [activeTab, setActiveTab] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (activities.length === 0) fetchAll();
-  }, [activities.length, fetchAll]);
+  useEffect(() => { if (activities.length === 0) fetchAll(); }, [activities.length, fetchAll]);
 
-  const sportTypes = useMemo(() => {
-    const types = [...new Set(activities.map((a) => a.type))].sort();
-    return types;
-  }, [activities]);
+  const sportTypes = useMemo(() => [...new Set(activities.map((a) => a.type))].sort(), [activities]);
 
-  // Set first tab once types are known
   useEffect(() => {
     if (!activeTab && sportTypes.length > 0) setActiveTab(sportTypes[0]);
   }, [activeTab, sportTypes]);
 
   const activeSport = activeTab ?? sportTypes[0] ?? '';
-  const meta = sportMeta[activeSport] ?? DEFAULT_META;
+  const meta = getSportMeta(activeSport);
   const Icon = meta.icon;
-  const prs = useMemo(
-    () => computePRs(activities as ActivitySummary[], activeSport),
-    [activities, activeSport]
-  );
+  const prs = useMemo(() => computePRs(activities as ActivitySummary[], activeSport), [activities, activeSport]);
 
   return (
     <main className="flex-1 overflow-auto pb-20 lg:pb-6">
       <div className="px-4 md:px-8 lg:px-12 py-6 lg:py-8">
-        {/* Header */}
+
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Trophy className="w-6 h-6 text-accent-pr" />
@@ -319,7 +195,7 @@ export default function RecordsPage() {
           <div className="space-y-6">
             <Skeleton className="h-14" />
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-44" />)}
+              {[1,2,3,4].map((i) => <Skeleton key={i} className="h-44" />)}
             </div>
           </div>
         )}
@@ -335,12 +211,11 @@ export default function RecordsPage() {
           <>
             {/* Sport tabs */}
             <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
               className="glass-panel rounded-2xl p-4 mb-6 flex flex-wrap gap-2"
             >
               {sportTypes.map((type) => {
-                const m = sportMeta[type] ?? DEFAULT_META;
+                const m = getSportMeta(type);
                 const SIcon = m.icon;
                 const count = activities.filter((a) => a.type === type).length;
                 const isActive = activeSport === type;
@@ -348,18 +223,25 @@ export default function RecordsPage() {
                   <button
                     key={type}
                     onClick={() => setActiveTab(type)}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                      isActive
-                        ? `${m.bg} ${m.border} border ${m.color}`
-                        : 'bg-white/4 border border-transparent text-text-secondary hover:text-text-primary hover:bg-white/8'
-                    }`}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 border"
+                    style={isActive ? {
+                      background: `${m.hex}15`,
+                      borderColor: `${m.hex}40`,
+                      color: m.hex,
+                    } : {
+                      background: 'transparent',
+                      borderColor: 'transparent',
+                      color: 'var(--text-secondary)',
+                    }}
                   >
                     <SIcon className="w-4 h-4" />
-                    {type}
+                    {m.label}
                     <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
-                        isActive ? `${m.bg} ${m.color}` : 'bg-white/8 text-text-muted'
-                      }`}
+                      className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold"
+                      style={isActive
+                        ? { background: `${m.hex}20`, color: m.hex }
+                        : { background: 'var(--border)', color: 'var(--text-muted)' }
+                      }
                     >
                       {count}
                     </span>
@@ -370,41 +252,38 @@ export default function RecordsPage() {
 
             {/* Active sport summary */}
             <motion.div
-              key={activeSport + '-summary'}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              key={activeSport + '-summary'} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               className="glass-panel rounded-2xl p-5 mb-6 flex items-center gap-4"
             >
               <div
-                className={`p-3 rounded-xl ${meta.bg} ${meta.border} border ${meta.color}`}
+                className="p-3 rounded-xl flex-shrink-0"
+                style={{ background: `${meta.hex}18`, color: meta.hex }}
               >
                 <Icon className="w-5 h-5" />
               </div>
               <div>
-                <p className="font-semibold text-text-primary mb-1">{activeSport} Overview</p>
+                <p className="font-semibold text-text-primary mb-1">{meta.label} Overview</p>
                 <SportSummaryBar type={activeSport} activities={activities as ActivitySummary[]} />
               </div>
             </motion.div>
 
             {/* PR grid */}
-            <motion.div
-              key={activeSport + '-prs'}
-              className="grid grid-cols-2 md:grid-cols-3 gap-4"
-              variants={container}
-              initial="initial"
-              animate="animate"
-            >
-              {prs.map((pr) => (
-                <motion.div key={pr.label} variants={item}>
-                  <PRCard pr={pr} accent={meta.accent} />
-                </motion.div>
-              ))}
-            </motion.div>
-
-            {prs.length === 0 && (
+            {prs.length > 0 ? (
+              <motion.div
+                key={activeSport + '-prs'}
+                className="grid grid-cols-2 md:grid-cols-3 gap-4"
+                variants={container} initial="initial" animate="animate"
+              >
+                {prs.map((pr) => (
+                  <motion.div key={pr.label} variants={itemV}>
+                    <PRCard pr={pr} hex={meta.hex} />
+                  </motion.div>
+                ))}
+              </motion.div>
+            ) : (
               <div className="glass-panel rounded-2xl p-10 text-center text-text-secondary">
                 <TrendingUp className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                <p>No records yet for {activeSport}.</p>
+                <p>No records yet for {meta.label}.</p>
               </div>
             )}
           </>
