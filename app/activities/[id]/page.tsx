@@ -16,6 +16,7 @@ import { BestEffortsTable } from '@/components/BestEffortsTable';
 import { ArrowLeft, GitCompare } from 'lucide-react';
 import Link from 'next/link';
 import { getSportMeta, getSportBadgeVariant } from '@/utils/sportConfig';
+import { fmtActivityTimes } from '@/utils/timeUtils';
 
 interface Activity {
   id: number;
@@ -125,6 +126,11 @@ export default function ActivityDetailPage() {
   }
 
   const sportMeta = getSportMeta(activity.type);
+  const { localRange, istLabel, isIST } = fmtActivityTimes(
+    activity.start_date,
+    activity.start_date_local as string | undefined,
+    activity.elapsed_time,
+  );
 
   return (
     <main className="flex-1 overflow-auto pb-20 lg:pb-6">
@@ -157,14 +163,13 @@ export default function ActivityDetailPage() {
                 {activity.name}
               </h1>
               <p className="text-text-secondary">
-                {new Date(activity.start_date).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
+                {new Date(activity.start_date).toLocaleDateString('en-IN', {
+                  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                  timeZone: 'Asia/Kolkata',
                 })}
+              </p>
+              <p className="text-sm font-mono mt-1" style={{ color: sportMeta.hex, opacity: 0.9 }}>
+                {isIST ? `${localRange} IST` : <>{localRange} · {istLabel}</>}
               </p>
             </div>
             <Badge variant={getSportBadgeVariant(activity.type)}>{sportMeta.label}</Badge>
