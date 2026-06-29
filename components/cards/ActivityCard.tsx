@@ -14,7 +14,9 @@ interface ActivityCardProps {
     type: string;
     distance: number;
     moving_time: number;
+    elapsed_time?: number;
     start_date: string;
+    start_date_local?: string;
     average_speed: number;
     elevation_gain?: number;
     average_heartrate?: number;
@@ -22,10 +24,21 @@ interface ActivityCardProps {
   };
 }
 
+const IST = 'Asia/Kolkata';
+
+function fmtTimeIST(date: Date) {
+  return date.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: IST });
+}
+
 export function ActivityCard({ activity }: ActivityCardProps) {
   const meta = getSportMeta(activity.type);
   const Icon = meta.icon;
   const badgeVariant = getSportBadgeVariant(activity.type);
+
+  const startDate = new Date(activity.start_date);
+  const endDate = activity.elapsed_time
+    ? new Date(startDate.getTime() + activity.elapsed_time * 1000)
+    : null;
 
   return (
     <motion.div
@@ -58,9 +71,13 @@ export function ActivityCard({ activity }: ActivityCardProps) {
                   {activity.name}
                 </h3>
                 <p className="text-xs text-text-secondary mt-0.5">
-                  {new Date(activity.start_date).toLocaleDateString(undefined, {
-                    weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+                  {startDate.toLocaleDateString('en-IN', {
+                    weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', timeZone: IST,
                   })}
+                </p>
+                <p className="text-xs mt-0.5 font-mono" style={{ color: meta.hex, opacity: 0.85 }}>
+                  {fmtTimeIST(startDate)}
+                  {endDate && <> → {fmtTimeIST(endDate)}</>}
                 </p>
               </div>
             </div>

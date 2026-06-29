@@ -211,10 +211,20 @@ function StatCard({
   );
 }
 
+const IST = 'Asia/Kolkata';
+function fmtTimeIST(date: Date) {
+  return date.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: IST });
+}
+
 function SessionHeader({ sess, slot }: { sess: SessionData; slot: 'A' | 'B' }) {
   const color = slot === 'A' ? COLOR_A : COLOR_B;
   const m = getSportMeta(sess.activity.type);
   const Icon = m.icon;
+
+  const startDate = new Date(sess.activity.start_date);
+  const elapsedTime = sess.activity.elapsed_time as number | undefined;
+  const endDate = elapsedTime ? new Date(startDate.getTime() + elapsedTime * 1000) : null;
+
   return (
     <div
       className="glass-panel rounded-2xl p-5 flex items-start gap-4 border-t-2"
@@ -231,9 +241,13 @@ function SessionHeader({ sess, slot }: { sess: SessionData; slot: 'A' | 'B' }) {
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-text-primary leading-snug truncate">{sess.activity.name}</p>
         <p className="text-xs text-text-secondary mt-1">
-          {new Date(sess.activity.start_date).toLocaleDateString('en-US', {
-            weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+          {startDate.toLocaleDateString('en-IN', {
+            weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: IST,
           })}
+        </p>
+        <p className="text-xs mt-0.5 font-mono" style={{ color, opacity: 0.9 }}>
+          {fmtTimeIST(startDate)}
+          {endDate && <> → {fmtTimeIST(endDate)}</>}
         </p>
         <div className="flex items-center gap-3 mt-2 text-xs font-mono text-text-secondary">
           <span>{formatDistance(sess.activity.distance)}</span>
