@@ -8,7 +8,8 @@ import { ActivityCard } from '@/components/cards/ActivityCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { formatDistance, formatDuration } from '@/utils/formatters';
-import { TrendingUp, Clock, Mountain, Calendar, Bike, Footprints, PersonStanding, Waves, Dumbbell, Wind, Activity, RotateCw } from 'lucide-react';
+import { TrendingUp, Clock, Calendar, RotateCw, Activity } from 'lucide-react';
+import { getSportMeta } from '@/utils/sportConfig';
 import ThemeToggle from '@/components/ThemeToggle';
 
 const container = {
@@ -218,25 +219,18 @@ export default function Dashboard() {
               animate="animate"
             >
               {Object.entries(activityStats).map(([type, stats]) => {
-                const sportIconMap: Record<string, React.ReactNode> = {
-                  Ride: <Bike className="w-6 h-6 text-accent-ride" />,
-                  Run: <Footprints className="w-6 h-6 text-accent-run" />,
-                  Walk: <PersonStanding className="w-6 h-6 text-accent-walk" />,
-                  Swim: <Waves className="w-6 h-6 text-blue-500" />,
-                  Hike: <Mountain className="w-6 h-6 text-orange-500" />,
-                  Workout: <Dumbbell className="w-6 h-6 text-purple-500" />,
-                  EBikeRide: <Bike className="w-6 h-6 text-accent-ride" />,
-                  Windsurf: <Wind className="w-6 h-6 text-cyan-500" />,
-                };
-                const icon = sportIconMap[type] || <TrendingUp className="w-6 h-6 text-text-secondary" />;
+                const meta = getSportMeta(type);
+                const Icon = meta.icon;
                 return (
                   <motion.div
                     key={type}
                     variants={item}
                     className="glass-panel glass-panel-hover rounded-xl p-4 flex items-center gap-4"
                   >
-                    {icon}
-                    <span className="font-semibold min-w-20">{type}</span>
+                    <div className="p-1.5 rounded-xl flex-shrink-0" style={{ color: meta.hex, background: `${meta.hex}18` }}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <span className="font-semibold min-w-20">{meta.label}</span>
                     <div className="flex items-center gap-6 ml-auto text-sm">
                       <div className="text-right">
                         <p className="text-text-secondary text-xs">Time</p>

@@ -3,22 +3,62 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Zap } from 'lucide-react';
+import { getSportMeta } from '@/utils/sportConfig';
 
 interface BestEffortsTableProps {
   distanceData: number[];
   timeData: number[];
   activityDistance: number; // total metres
+  sportType?: string;
 }
 
-const EFFORTS = [
-  { label: '400 m',       metres: 400 },
-  { label: '1 km',        metres: 1000 },
-  { label: '1 mile',      metres: 1609 },
-  { label: '5 km',        metres: 5000 },
-  { label: '10 km',       metres: 10000 },
-  { label: 'Half (21k)',  metres: 21097 },
-  { label: 'Marathon',    metres: 42195 },
+interface Effort { label: string; metres: number }
+
+// Standard distances per sport category
+const EFFORTS_RUN: Effort[] = [
+  { label: '400 m',      metres: 400 },
+  { label: '1 km',       metres: 1000 },
+  { label: '1 mile',     metres: 1609 },
+  { label: '5 km',       metres: 5000 },
+  { label: '10 km',      metres: 10000 },
+  { label: 'Half (21k)', metres: 21097 },
+  { label: 'Marathon',   metres: 42195 },
 ];
+
+const EFFORTS_SWIM: Effort[] = [
+  { label: '50 m',  metres: 50 },
+  { label: '100 m', metres: 100 },
+  { label: '200 m', metres: 200 },
+  { label: '400 m', metres: 400 },
+  { label: '800 m', metres: 800 },
+  { label: '1500 m',metres: 1500 },
+  { label: '1 km',  metres: 1000 },
+];
+
+const EFFORTS_RIDE: Effort[] = [
+  { label: '1 km',   metres: 1000 },
+  { label: '5 km',   metres: 5000 },
+  { label: '10 km',  metres: 10000 },
+  { label: '20 km',  metres: 20000 },
+  { label: '40 km',  metres: 40000 },
+  { label: '100 km', metres: 100000 },
+];
+
+const EFFORTS_DEFAULT: Effort[] = [
+  { label: '500 m',  metres: 500 },
+  { label: '1 km',   metres: 1000 },
+  { label: '5 km',   metres: 5000 },
+  { label: '10 km',  metres: 10000 },
+  { label: '20 km',  metres: 20000 },
+];
+
+function getEffortsForSport(type: string): Effort[] {
+  if (type === 'Run' || type === 'TrailRun' || type === 'VirtualRun') return EFFORTS_RUN;
+  if (type === 'Swim') return EFFORTS_SWIM;
+  if (type === 'Ride' || type === 'VirtualRide' || type === 'EBikeRide') return EFFORTS_RIDE;
+  if (type === 'Walk' || type === 'Hike') return EFFORTS_RUN;
+  return EFFORTS_DEFAULT;
+}
 
 function formatTime(seconds: number) {
   const h = Math.floor(seconds / 3600);
@@ -35,6 +75,11 @@ function formatPace(seconds: number, metres: number) {
   return `${m}:${s.toString().padStart(2, '0')} /km`;
 }
 
+function formatSpeed(seconds: number, metres: number) {
+  const kmh = (metres / seconds) * 3.6;
+  return `${kmh.toFixed(1)} km/h`;
+}
+
 function bestEffort(distData: number[], timeData: number[], targetMetres: number): number | null {
   if (distData.length < 2) return null;
   if ((distData[distData.length - 1] ?? 0) < targetMetres) return null;
@@ -43,13 +88,9 @@ function bestEffort(distData: number[], timeData: number[], targetMetres: number
   let j = 0;
 
   for (let i = 0; i < distData.length; i++) {
-    // advance j until the window covers targetMetres
-    while (j < distData.length - 1 && distData[j] - distData[i] < targetMetres) {
-      j++;
-    }
+    while (j < distData.length - 1 && distData[j] - distData[i] < targetMetres) j++;
     const covered = distData[j] - distData[i];
     if (covered >= targetMetres) {
-      // linear interpolation for precise end time
       const excess = covered - targetMetres;
       const segLen = distData[j] - distData[j - 1];
       const segTime = timeData[j] - timeData[j - 1];
@@ -62,20 +103,24 @@ function bestEffort(distData: number[], timeData: number[], targetMetres: number
   return best === Infinity ? null : best;
 }
 
-export function BestEffortsTable({ distanceData, timeData, activityDistance }: BestEffortsTableProps) {
-  const efforts = useMemo(() => {
-    return EFFORTS
+export function BestEffortsTable({
+  distanceData, timeData, activityDistance, sportType = 'Run',
+}: BestEffortsTableProps) {
+  const meta = getSportMeta(sportType);
+  const efforts = getEffortsForSport(sportType);
+
+  const computed = useMemo(() => {
+    return efforts
       .filter((e) => activityDistance >= e.metres * 0.95)
-      .map((e) => {
-        const seconds = bestEffort(distanceData, timeData, e.metres);
-        return { ...e, seconds };
-      })
-      .filter((e) => e.seconds !== null) as (typeof EFFORTS[number] & { seconds: number })[];
-  }, [distanceData, timeData, activityDistance]);
+      .map((e) => ({ ...e, seconds: bestEffort(distanceData, timeData, e.metres) }))
+      .filter((e): e is typeof e & { seconds: number } => e.seconds !== null);
+  }, [distanceData, timeData, activityDistance, efforts]);
 
-  if (efforts.length === 0) return null;
+  if (computed.length === 0) return null;
 
-  const fastestPaceSeconds = Math.min(...efforts.map((e) => (e.seconds / e.metres) * 1000));
+  const ratesPerKm = computed.map((e) => (e.seconds / e.metres) * 1000);
+  const fastest = Math.min(...ratesPerKm);
+  const slowest = Math.max(...ratesPerKm);
 
   return (
     <motion.div
@@ -86,11 +131,11 @@ export function BestEffortsTable({ distanceData, timeData, activityDistance }: B
       className="glass-panel rounded-2xl p-6"
     >
       <div className="flex items-center gap-2 mb-1">
-        <Zap className="w-4 h-4 text-accent-pr" />
+        <Zap className="w-4 h-4" style={{ color: meta.hex }} />
         <h3 className="text-lg font-semibold text-text-primary">Best Efforts</h3>
       </div>
       <p className="text-sm text-text-secondary mb-5">
-        Fastest time to cover each standard distance in this run.
+        Fastest time to cover each standard distance in this {meta.label.toLowerCase()}.
       </p>
 
       <div className="overflow-x-auto">
@@ -99,24 +144,18 @@ export function BestEffortsTable({ distanceData, timeData, activityDistance }: B
             <tr className="border-b border-border">
               <th className="pb-3 text-left font-medium text-text-secondary">Distance</th>
               <th className="pb-3 text-right font-medium text-text-secondary">Time</th>
-              <th className="pb-3 text-right font-medium text-text-secondary">Pace</th>
-              <th className="pb-3 pr-1 text-right font-medium text-text-secondary">Effort bar</th>
+              <th className="pb-3 text-right font-medium text-text-secondary">
+                {meta.usePace ? 'Pace' : 'Speed'}
+              </th>
+              <th className="pb-3 pr-1 text-right font-medium text-text-secondary">Effort</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
-            {efforts.map((e, i) => {
-              const paceSeconds = (e.seconds / e.metres) * 1000;
-              const slowestPaceSeconds = Math.max(...efforts.map((x) => (x.seconds / x.metres) * 1000));
-              // bar: full width = fastest, empty = slowest
-              const barPct =
-                slowestPaceSeconds === fastestPaceSeconds
-                  ? 100
-                  : Math.round(
-                      100 -
-                        ((paceSeconds - fastestPaceSeconds) /
-                          (slowestPaceSeconds - fastestPaceSeconds)) *
-                          100
-                    );
+            {computed.map((e, i) => {
+              const ratePerKm = (e.seconds / e.metres) * 1000;
+              const barPct = slowest === fastest
+                ? 100
+                : Math.round(100 - ((ratePerKm - fastest) / (slowest - fastest)) * 100);
 
               return (
                 <motion.tr
@@ -130,14 +169,19 @@ export function BestEffortsTable({ distanceData, timeData, activityDistance }: B
                     {formatTime(e.seconds)}
                   </td>
                   <td className="py-3 text-right font-mono text-text-secondary text-xs">
-                    {formatPace(e.seconds, e.metres)}
+                    {meta.usePace
+                      ? formatPace(e.seconds, e.metres)
+                      : formatSpeed(e.seconds, e.metres)}
                   </td>
                   <td className="py-3 pl-4 pr-1">
                     <div className="flex items-center justify-end">
-                      <div className="h-1.5 w-24 rounded-full bg-white/5 overflow-hidden">
+                      <div className="h-1.5 w-24 rounded-full bg-border overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-accent-pr to-accent-run transition-all duration-500"
-                          style={{ width: `${barPct}%` }}
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${barPct}%`,
+                            background: `linear-gradient(to right, ${meta.hex}99, ${meta.hex})`,
+                          }}
                         />
                       </div>
                     </div>

@@ -1,22 +1,29 @@
 'use client';
 
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
+import { getSportMeta } from '@/utils/sportConfig';
 
 interface ChartProps {
   data: Record<string, string | number>[];
 }
 
 export function WeeklyVolumeChart({ data }: ChartProps) {
+  // Derive sport types dynamically from the data keys (exclude 'name' which is the week label)
+  const sportTypes = useMemo(() => {
+    const keys = new Set<string>();
+    for (const row of data) {
+      for (const k of Object.keys(row)) {
+        if (k !== 'name') keys.add(k);
+      }
+    }
+    return [...keys];
+  }, [data]);
+
   return (
     <motion.div
       initial={{ opacity: 0, scaleY: 0.92 }}
@@ -36,15 +43,11 @@ export function WeeklyVolumeChart({ data }: ChartProps) {
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.65} />
           <XAxis
             dataKey="name"
-            stroke="var(--text-secondary)"
-            tickLine={false}
-            axisLine={false}
+            tickLine={false} axisLine={false}
             tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
           />
           <YAxis
-            stroke="var(--text-secondary)"
-            tickLine={false}
-            axisLine={false}
+            tickLine={false} axisLine={false}
             tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
           />
           <Tooltip
@@ -55,11 +58,31 @@ export function WeeklyVolumeChart({ data }: ChartProps) {
               boxShadow: 'var(--tooltip-shadow)',
             }}
             cursor={{ fill: 'var(--border)', opacity: 0.4 }}
+            formatter={(value: unknown, name: unknown) => [
+              typeof value === 'number' ? `${value.toFixed(1)} km` : String(value ?? ''),
+              typeof name === 'string' ? getSportMeta(name).label : String(name ?? ''),
+            ]}
           />
-          <Legend wrapperStyle={{ paddingTop: '16px' }} iconType="square" iconSize={10} />
-          <Bar dataKey="Ride" stackId="a" fill="var(--accent-ride)" radius={[0, 0, 0, 0]} />
-          <Bar dataKey="Run" stackId="a" fill="var(--accent-run)" radius={[0, 0, 0, 0]} />
-          <Bar dataKey="Walk" stackId="a" fill="var(--accent-walk)" radius={[4, 4, 0, 0]} />
+          <Legend
+            wrapperStyle={{ paddingTop: '16px' }}
+            iconType="square"
+            iconSize={10}
+            formatter={(v) => getSportMeta(String(v)).label}
+          />
+          {sportTypes.map((type, i) => {
+            const meta = getSportMeta(type);
+            // Last sport type gets rounded top corners
+            const isTop = i === sportTypes.length - 1;
+            return (
+              <Bar
+                key={type}
+                dataKey={type}
+                stackId="a"
+                fill={meta.hex}
+                radius={isTop ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+              />
+            );
+          })}
         </BarChart>
       </ResponsiveContainer>
     </motion.div>

@@ -2,16 +2,11 @@
 
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts';
+import { getSportMeta } from '@/utils/sportConfig';
 
 interface ChartProps {
   data: { name: string; value: number }[];
 }
-
-const SPORT_COLORS: Record<string, string> = {
-  Run: 'var(--accent-run)',
-  Ride: 'var(--accent-ride)',
-  Walk: 'var(--accent-walk)',
-};
 
 export function SportBreakdownChart({ data }: ChartProps) {
   return (
@@ -35,14 +30,14 @@ export function SportBreakdownChart({ data }: ChartProps) {
             cx="50%"
             cy="50%"
             labelLine={false}
-            label={({ name, value }) => `${name}: ${value}%`}
+            label={({ name, value }) => `${getSportMeta(String(name ?? '')).label}: ${value}%`}
             outerRadius={100}
             dataKey="value"
           >
             {data.map(entry => (
               <Cell
                 key={`cell-${entry.name}`}
-                fill={SPORT_COLORS[entry.name] ?? 'var(--text-secondary)'}
+                fill={getSportMeta(entry.name).hex}
               />
             ))}
           </Pie>
@@ -53,11 +48,17 @@ export function SportBreakdownChart({ data }: ChartProps) {
               borderRadius: '12px',
               boxShadow: 'var(--tooltip-shadow)',
             }}
-            formatter={(value: unknown) => [
+            formatter={(value: unknown, name: unknown) => [
               typeof value === 'number' ? `${value}%` : String(value ?? ''),
+              typeof name === 'string' ? getSportMeta(name).label : String(name ?? ''),
             ]}
           />
-          <Legend wrapperStyle={{ paddingTop: '16px' }} iconType="circle" iconSize={10} />
+          <Legend
+            wrapperStyle={{ paddingTop: '16px' }}
+            iconType="circle"
+            iconSize={10}
+            formatter={(v) => getSportMeta(String(v)).label}
+          />
         </PieChart>
       </ResponsiveContainer>
     </motion.div>

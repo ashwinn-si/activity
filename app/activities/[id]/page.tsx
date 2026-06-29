@@ -256,6 +256,7 @@ export default function ActivityDetailPage() {
             {streams.velocity_smooth?.data && (
               <motion.div variants={item}>
                 <PaceChart
+                  sportType={activity.type}
                   data={
                   distData
                     .map((d: number, i: number) => ({
@@ -281,6 +282,7 @@ export default function ActivityDetailPage() {
                   distanceData={distData}
                   timeData={timeData}
                   activityDistance={activity.distance}
+                  sportType={activity.type}
                 />
               </motion.div>
             )}
