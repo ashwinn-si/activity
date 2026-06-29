@@ -11,7 +11,10 @@ import { ProgressChart } from '@/components/charts/ProgressChart';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
-import { ArrowLeft } from 'lucide-react';
+import { KmSplitTable } from '@/components/KmSplitTable';
+import { RouteMap } from '@/components/RouteMap';
+import { BestEffortsTable } from '@/components/BestEffortsTable';
+import { ArrowLeft, GitCompare } from 'lucide-react';
 import Link from 'next/link';
 
 interface Activity {
@@ -130,13 +133,21 @@ export default function ActivityDetailPage() {
   return (
     <main className="flex-1 overflow-auto pb-20 lg:pb-6">
       <div className="px-4 md:px-8 lg:px-12 py-6 lg:py-8">
-        {/* Back Button */}
-        <Link href="/activities">
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 transition-all duration-300 mb-6 text-sm font-medium">
-            <ArrowLeft className="w-4 h-4" />
-            Back to Activities
-          </button>
-        </Link>
+        {/* Back Button + Compare */}
+        <div className="flex items-center justify-between mb-6">
+          <Link href="/activities">
+            <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 transition-all duration-300 text-sm font-medium">
+              <ArrowLeft className="w-4 h-4" />
+              Back to Activities
+            </button>
+          </Link>
+          <Link href={`/compare?a=${id}`}>
+            <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent-ride/10 border border-accent-ride/25 text-accent-ride hover:bg-accent-ride/20 transition-all duration-300 text-sm font-medium">
+              <GitCompare className="w-4 h-4" />
+              Compare
+            </button>
+          </Link>
+        </div>
 
         {/* Hero */}
         <motion.div
@@ -218,6 +229,25 @@ export default function ActivityDetailPage() {
             ))}
         </motion.div>
 
+        {/* Route Map */}
+        {(() => {
+          const polyline =
+            (activity as Record<string, unknown> & { map?: { polyline?: string; summary_polyline?: string } })
+              ?.map?.polyline ||
+            (activity as Record<string, unknown> & { map?: { polyline?: string; summary_polyline?: string } })
+              ?.map?.summary_polyline;
+          if (!polyline) return null;
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6"
+            >
+              <RouteMap polyline={polyline} sportType={activity.type} />
+            </motion.div>
+          );
+        })()}
+
         {/* Charts */}
         {streams && streams.distance?.data && streams.time?.data && streams.distance.data.length > 0 && (() => {
           const distData = streams.distance.data;
@@ -255,6 +285,23 @@ export default function ActivityDetailPage() {
                     }))
                     .filter((_: unknown, i: number) => i % downsample === 0) || []
                 }
+                />
+              </motion.div>
+            )}
+
+            <motion.div variants={item}>
+              <KmSplitTable
+                distanceData={distData}
+                timeData={timeData}
+              />
+            </motion.div>
+
+            {activity.type === 'Run' && (
+              <motion.div variants={item}>
+                <BestEffortsTable
+                  distanceData={distData}
+                  timeData={timeData}
+                  activityDistance={activity.distance}
                 />
               </motion.div>
             )}

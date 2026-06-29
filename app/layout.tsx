@@ -17,36 +17,58 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Strava Dashboard - Track Your Athletic Activities",
-  description: "Professional Strava activity dashboard to track, analyze, and visualize your cycling, running, and fitness activities with detailed stats and performance insights.",
-  keywords: ["Strava", "fitness tracking", "activity dashboard", "cycling", "running", "athletic activities", "performance analytics"],
+  title: {
+    default: "Strava Hub — Your Training, Visualized",
+    template: "%s · Strava Hub",
+  },
+  description:
+    "Personal Strava dashboard to track, compare, and analyze every run, ride, and walk. Km splits, route maps, personal records, and session comparisons — all in one place.",
+  keywords: [
+    "Strava", "running", "cycling", "fitness dashboard",
+    "activity tracker", "km splits", "personal records",
+    "pace chart", "route map", "training analytics",
+  ],
   authors: [{ name: "Ashwin" }],
   creator: "Ashwin",
+  applicationName: "Strava Hub",
+  metadataBase: new URL("https://strava-activity-hub.vercel.app"),
   icons: {
-    icon: "/logo.png",
+    icon: [
+      { url: "/icon.png", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-icon.png", type: "image/png" },
+    ],
+    shortcut: "/icon.png",
   },
   openGraph: {
     type: "website",
     locale: "en_US",
     url: "https://strava-activity-hub.vercel.app",
-    title: "Strava Dashboard - Track Your Athletic Activities",
-    description: "Professional dashboard for tracking and analyzing your Strava activities",
+    siteName: "Strava Hub",
+    title: "Strava Hub — Your Training, Visualized",
+    description:
+      "Personal dashboard for runs, rides, and walks. Km splits, route maps, personal records, and head-to-head session comparison.",
     images: [
       {
         url: "/logo.png",
         width: 512,
         height: 512,
-        alt: "Strava Activity Hub Logo",
+        alt: "Strava Hub",
       },
     ],
   },
   twitter: {
-    card: "summary_large_image",
-    title: "Strava Dashboard - Track Your Athletic Activities",
-    description: "Professional dashboard for tracking and analyzing your Strava activities",
+    card: "summary",
+    title: "Strava Hub — Your Training, Visualized",
+    description:
+      "Km splits, route maps, personal records, and session comparison for your Strava activities.",
     images: ["/logo.png"],
   },
-  robots: "index, follow",
+  robots: {
+    index: false,
+    follow: false,
+  },
   alternates: {
     canonical: "https://strava-activity-hub.vercel.app",
   },
