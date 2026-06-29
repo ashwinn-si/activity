@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -429,7 +429,7 @@ function OverlayChart({
 }
 
 /* ─── page ───────────────────────────────────────────────────── */
-export default function ComparePage() {
+function ComparePageInner() {
   const searchParams = useSearchParams();
   const { activities, loading, fetchAll } = useStravaStore();
   const preloadAId = searchParams.get('a');
@@ -740,5 +740,13 @@ export default function ComparePage() {
         </AnimatePresence>
       </div>
     </main>
+  );
+}
+
+export default function ComparePage() {
+  return (
+    <Suspense>
+      <ComparePageInner />
+    </Suspense>
   );
 }
