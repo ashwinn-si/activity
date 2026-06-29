@@ -162,7 +162,6 @@ export default function ProfilePage() {
           <div className="flex items-center gap-2 mb-5">
             <Zap className="w-4 h-4 text-text-secondary" />
             <h2 className="font-semibold text-text-primary">Activity Heatmap</h2>
-            <span className="ml-auto text-xs text-text-muted">Last 12 months</span>
           </div>
           <ActivityHeatmap activities={activities} />
         </motion.div>
