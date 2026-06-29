@@ -62,36 +62,57 @@ function computeKmSplits(dist: number[], time: number[]) {
   return out;
 }
 
-function buildOverlay(a: SessionData, b: SessionData, key: 'pace' | 'heartrate' | 'altitude') {
-  const extract = (sess: SessionData) => {
+/* Interpolate a sorted (km, val) series at a target km using linear interp */
+function interp(pts: { km: number; val: number }[], target: number): number | null {
+  if (!pts.length || target < pts[0].km || target > pts[pts.length - 1].km) return null;
+  let lo = 0, hi = pts.length - 1;
+  while (lo < hi - 1) { const mid = (lo + hi) >> 1; if (pts[mid].km <= target) lo = mid; else hi = mid; }
+  const p0 = pts[lo], p1 = pts[hi];
+  if (p0.km === p1.km) return p0.val;
+  return p0.val + ((target - p0.km) / (p1.km - p0.km)) * (p1.val - p0.val);
+}
+
+function buildOverlay(
+  a: SessionData, b: SessionData,
+  key: 'velocity' | 'heartrate' | 'altitude',
+  usePace: boolean,
+) {
+  const extract = (sess: SessionData): { km: number; val: number }[] => {
     const dist = sess.streams.distance?.data ?? [];
-    const raw = key === 'pace' ? sess.streams.velocity_smooth?.data
+    const raw = key === 'velocity' ? sess.streams.velocity_smooth?.data
       : key === 'heartrate' ? sess.streams.heartrate?.data
       : sess.streams.altitude?.data;
     if (!raw || !dist.length) return [];
-    const step = Math.ceil(dist.length / 80);
-    return dist.map((d, i) => {
+    return dist.reduce<{ km: number; val: number }[]>((acc, d, i) => {
       const v = raw[i];
-      // filter near-zero pace points (stopped / GPS glitch)
-      if (key === 'pace' && (!v || v < 0.5)) return null;
-      return { km: +(d / 1000).toFixed(2), val: key === 'pace' ? 1000 / v / 60 : v };
-    }).filter((p, i) => p !== null && i % step === 0) as { km: number; val: number }[];
+      if (key === 'velocity' && (!v || v < 0.5)) return acc;  // filter stops/glitches
+      const val = key === 'velocity'
+        ? (usePace ? 1000 / v / 60 : v * 3.6)
+        : v;
+      acc.push({ km: d / 1000, val });
+      return acc;
+    }, []);
   };
 
   const aV = extract(a), bV = extract(b);
-  const maxKm = Math.min(aV.at(-1)?.km ?? 0, bV.at(-1)?.km ?? 0);
-  const merged: Record<number, { km: number; a?: number; b?: number }> = {};
-  for (const p of aV) {
-    if (p.km > maxKm + 0.1) break;
-    const k = Math.round(p.km * 10);
-    merged[k] = { km: p.km, a: p.val };
+  if (!aV.length || !bV.length) return [];
+
+  // Overlap range — both sessions must have data here
+  const startKm = Math.max(aV[0].km, bV[0].km);
+  const maxKm   = Math.min(aV[aV.length - 1].km, bV[bV.length - 1].km);
+  if (maxKm <= startKm) return [];
+
+  // Sample both at fixed 0.05 km grid — guarantees aligned, continuous lines
+  const STEP = 0.05;
+  const result: { km: number; a?: number; b?: number }[] = [];
+  for (let km = startKm + STEP; km <= maxKm + 0.001; km += STEP) {
+    const kmR = Math.round(km * 100) / 100;
+    const av = interp(aV, kmR);
+    const bv = interp(bV, kmR);
+    if (av !== null || bv !== null)
+      result.push({ km: kmR, a: av ?? undefined, b: bv ?? undefined });
   }
-  for (const p of bV) {
-    if (p.km > maxKm + 0.1) break;
-    const k = Math.round(p.km * 10);
-    merged[k] = { ...merged[k], km: p.km, b: p.val };
-  }
-  return Object.values(merged).sort((x, y) => x.km - y.km);
+  return result;
 }
 
 /* ─── sub-components ────────────────────────────────────────── */
@@ -293,14 +314,40 @@ function SplitTable({ sessA, sessB, nameA, nameB }: {
 }
 
 function OverlayChart({
-  sessA, sessB, nameA, nameB, dataKey, title, yLabel, fmtTip,
+  sessA, sessB, nameA, nameB, dataKey, usePace,
 }: {
   sessA: SessionData; sessB: SessionData; nameA: string; nameB: string;
-  dataKey: 'pace' | 'heartrate' | 'altitude';
-  title: string; yLabel: string; fmtTip?: (v: number) => string;
+  dataKey: 'velocity' | 'heartrate' | 'altitude';
+  usePace: boolean;
 }) {
-  const data = useMemo(() => buildOverlay(sessA, sessB, dataKey), [sessA, sessB, dataKey]);
+  const data = useMemo(
+    () => buildOverlay(sessA, sessB, dataKey, usePace),
+    [sessA, sessB, dataKey, usePace],
+  );
   if (data.length === 0) return null;
+
+  const isVelocity = dataKey === 'velocity';
+  const isAlt      = dataKey === 'altitude';
+  const title      = isVelocity ? (usePace ? 'Pace' : 'Speed') : isAlt ? 'Elevation' : 'Heart Rate';
+  const yLabel     = isVelocity ? (usePace ? 'min/km' : 'km/h') : isAlt ? 'm' : 'bpm';
+
+  const fmtTip = (v: number) => {
+    if (isVelocity && usePace) {
+      const m = Math.floor(v); const s = Math.round((v - m) * 60).toString().padStart(2, '0');
+      return `${m}:${s} /km`;
+    }
+    if (isVelocity) return `${v.toFixed(1)} km/h`;
+    if (isAlt) return `${Math.round(v)} m`;
+    return `${Math.round(v)} bpm`;
+  };
+
+  // For elevation and HR, auto-scale Y-axis with a small margin
+  const allVals = data.flatMap((d) => [d.a, d.b]).filter((v): v is number => v != null);
+  const minVal = Math.min(...allVals), maxVal = Math.max(...allVals);
+  const pad = (maxVal - minVal) * 0.15 || 1;
+  const yDomain: [number | string, number | string] = isVelocity
+    ? ([0, 'auto'] as [number, string])
+    : ([Math.max(0, minVal - pad), maxVal + pad] as [number, number]);
 
   return (
     <motion.div
@@ -321,22 +368,25 @@ function OverlayChart({
             dataKey="km"
             tickLine={false} axisLine={false}
             tick={{ fontSize: 11, fill: '#888' }}
+            tickFormatter={(v) => typeof v === 'number' ? v.toFixed(2) : v}
             label={{ value: 'km', position: 'insideBottomRight', offset: -4, fontSize: 11, fill: '#888' }}
           />
           <YAxis
             tickLine={false} axisLine={false}
             tick={{ fontSize: 11, fill: '#888' }}
+            domain={yDomain}
             label={{ value: yLabel, angle: -90, position: 'insideLeft', fontSize: 11, fill: '#888' }}
-            width={40}
+            width={44}
+            tickFormatter={(v) => typeof v === 'number' ? (isVelocity && !usePace ? v.toFixed(0) : v.toFixed(1)) : v}
           />
           <Tooltip
             contentStyle={{ background: '#1a1f2e', border: '1px solid #2a2f3e', borderRadius: 10, fontSize: 12 }}
             labelStyle={{ color: '#aaa', marginBottom: 4 }}
             formatter={(v: unknown, name: unknown) => [
-              typeof v === 'number' && fmtTip ? fmtTip(v) : String(v),
+              typeof v === 'number' ? fmtTip(v) : String(v),
               name === 'a' ? nameA : nameB,
             ]}
-            labelFormatter={(l) => `${l} km`}
+            labelFormatter={(l) => `${typeof l === 'number' ? l.toFixed(2) : l} km`}
           />
           <Legend
             formatter={(v) => (
@@ -347,10 +397,10 @@ function OverlayChart({
           />
           <Line type="monotone" dataKey="a" stroke={COLOR_A} strokeWidth={2.5}
             dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: COLOR_A }}
-            isAnimationActive={false} name="a" connectNulls={false} />
+            isAnimationActive={false} name="a" connectNulls />
           <Line type="monotone" dataKey="b" stroke={COLOR_B} strokeWidth={2.5}
             dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: COLOR_B }}
-            isAnimationActive={false} name="b" connectNulls={false} />
+            isAnimationActive={false} name="b" connectNulls />
         </LineChart>
       </ResponsiveContainer>
     </motion.div>
@@ -415,9 +465,14 @@ export default function ComparePage() {
   };
 
   const bothReady = sessA && sessB && !loadingA && !loadingB;
-  const hasPace = bothReady && sessA.streams.velocity_smooth?.data && sessB.streams.velocity_smooth?.data;
-  const hasHR   = bothReady && sessA.streams.heartrate?.data && sessB.streams.heartrate?.data;
-  const hasAlt  = bothReady && sessA.streams.altitude?.data && sessB.streams.altitude?.data;
+  const hasVelocity = bothReady && (sessA.streams.velocity_smooth?.data?.length ?? 0) > 0
+                               && (sessB.streams.velocity_smooth?.data?.length ?? 0) > 0;
+  const hasHR   = bothReady && (sessA.streams.heartrate?.data?.length ?? 0) > 0
+                            && (sessB.streams.heartrate?.data?.length ?? 0) > 0;
+  const hasAlt  = bothReady && (sessA.streams.altitude?.data?.length ?? 0) > 0
+                            && (sessB.streams.altitude?.data?.length ?? 0) > 0;
+
+  const sportUsePace = selectedSport ? getSportMeta(selectedSport).usePace : true;
 
   // Step indicator
   const step = !selectedSport ? 1 : !activityA || !activityB ? 2 : 3;
@@ -585,11 +640,12 @@ export default function ComparePage() {
                         valA={formatDuration(sessA.activity.moving_time)}
                         valB={formatDuration(sessB.activity.moving_time)}
                         higherIsBetter={false} />
-                      <StatCard label="Avg Pace"
-                        valA={formatPace(sessA.activity.average_speed)}
-                        valB={formatPace(sessB.activity.average_speed)}
-                        higherIsBetter={false} />
-                      {sessA.activity.average_speed > 0 && (
+                      {sportUsePace ? (
+                        <StatCard label="Avg Pace"
+                          valA={formatPace(sessA.activity.average_speed)}
+                          valB={formatPace(sessB.activity.average_speed)}
+                          higherIsBetter={false} />
+                      ) : (
                         <StatCard label="Avg Speed"
                           valA={formatSpeed(sessA.activity.average_speed)}
                           valB={formatSpeed(sessB.activity.average_speed)} />
@@ -609,20 +665,17 @@ export default function ComparePage() {
                     )}
 
                     {/* Charts */}
-                    {hasPace && (
+                    {hasVelocity && (
                       <OverlayChart sessA={sessA} sessB={sessB} nameA={nameA} nameB={nameB}
-                        dataKey="pace" title="Pace" yLabel="min/km"
-                        fmtTip={(v) => { const m = Math.floor(v); const s = Math.round((v-m)*60).toString().padStart(2,'0'); return `${m}:${s} /km`; }} />
+                        dataKey="velocity" usePace={sportUsePace} />
                     )}
                     {hasHR && (
                       <OverlayChart sessA={sessA} sessB={sessB} nameA={nameA} nameB={nameB}
-                        dataKey="heartrate" title="Heart Rate" yLabel="bpm"
-                        fmtTip={(v) => `${Math.round(v)} bpm`} />
+                        dataKey="heartrate" usePace={false} />
                     )}
                     {hasAlt && (
                       <OverlayChart sessA={sessA} sessB={sessB} nameA={nameA} nameB={nameB}
-                        dataKey="altitude" title="Elevation" yLabel="m"
-                        fmtTip={(v) => `${Math.round(v)} m`} />
+                        dataKey="altitude" usePace={false} />
                     )}
                   </motion.div>
                 );
