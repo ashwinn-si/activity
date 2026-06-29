@@ -250,15 +250,16 @@ function SplitTable({ sessA, sessB, nameA, nameB }: {
       className="glass-panel rounded-2xl p-6"
     >
       <h3 className="text-base font-semibold text-text-primary mb-1">Km Splits</h3>
-      <p className="text-sm text-text-secondary mb-5">Time for each km — winner highlighted.</p>
+      <p className="text-sm text-text-secondary mb-4">Time for each km — winner highlighted.</p>
       <div className="overflow-x-auto">
+        <div className="overflow-y-auto" style={{ maxHeight: 400 }}>
         <table className="w-full text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10" style={{ background: 'var(--background)' }}>
             <tr className="border-b border-border">
-              <th className="pb-3 text-left font-medium text-text-secondary w-12">Km</th>
-              <th className="pb-3 text-center font-medium" style={{ color: COLOR_A }}>{nameA}</th>
-              <th className="pb-3 text-center font-medium" style={{ color: COLOR_B }}>{nameB}</th>
-              <th className="pb-3 text-right font-medium text-text-secondary">Δ</th>
+              <th className="pb-3 pt-1 text-left font-medium text-text-secondary w-12">Km</th>
+              <th className="pb-3 pt-1 text-center font-medium" style={{ color: COLOR_A }}>{nameA}</th>
+              <th className="pb-3 pt-1 text-center font-medium" style={{ color: COLOR_B }}>{nameB}</th>
+              <th className="pb-3 pt-1 text-right font-medium text-text-secondary">Δ</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/30">
@@ -308,7 +309,13 @@ function SplitTable({ sessA, sessB, nameA, nameB }: {
             })}
           </tbody>
         </table>
+        </div>
       </div>
+      {rows > 10 && (
+        <p className="mt-2 text-center text-[11px]" style={{ color: 'var(--text-muted)' }}>
+          Scroll to see all {rows} splits
+        </p>
+      )}
     </motion.div>
   );
 }
