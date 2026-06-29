@@ -95,9 +95,23 @@ function buildOverlay(
   };
 
   const aV = extract(a), bV = extract(b);
-  if (!aV.length || !bV.length) return [];
+  if (!aV.length && !bV.length) return [];
 
-  // Overlap range — both sessions must have data here
+  // If only one session has data, render that series alone over its full range
+  if (!aV.length || !bV.length) {
+    const pts = aV.length ? aV : bV;
+    const isA = aV.length > 0;
+    const STEP = 0.05;
+    const result: { km: number; a?: number; b?: number }[] = [];
+    for (let km = pts[0].km + STEP; km <= pts[pts.length - 1].km + 0.001; km += STEP) {
+      const kmR = Math.round(km * 100) / 100;
+      const v = interp(pts, kmR);
+      if (v !== null) result.push(isA ? { km: kmR, a: v } : { km: kmR, b: v });
+    }
+    return result;
+  }
+
+  // Overlap range — both sessions have data
   const startKm = Math.max(aV[0].km, bV[0].km);
   const maxKm   = Math.min(aV[aV.length - 1].km, bV[bV.length - 1].km);
   if (maxKm <= startKm) return [];
@@ -474,8 +488,8 @@ export default function ComparePage() {
   const bothReady = sessA && sessB && !loadingA && !loadingB;
   const hasVelocity = bothReady && (sessA.streams.velocity_smooth?.data?.length ?? 0) > 0
                                && (sessB.streams.velocity_smooth?.data?.length ?? 0) > 0;
-  const hasHR   = bothReady && (sessA.streams.heartrate?.data?.length ?? 0) > 0
-                            && (sessB.streams.heartrate?.data?.length ?? 0) > 0;
+  const hasHR   = bothReady && ((sessA.streams.heartrate?.data?.length ?? 0) > 0
+                            ||  (sessB.streams.heartrate?.data?.length ?? 0) > 0);
   const hasAlt  = bothReady && (sessA.streams.altitude?.data?.length ?? 0) > 0
                             && (sessB.streams.altitude?.data?.length ?? 0) > 0;
 
@@ -663,6 +677,14 @@ export default function ComparePage() {
                       <StatCard label="Max Speed"
                         valA={`${((sessA.activity.max_speed ?? 0) * 3.6).toFixed(1)} km/h`}
                         valB={`${((sessB.activity.max_speed ?? 0) * 3.6).toFixed(1)} km/h`} />
+                      <StatCard label="Avg Heart Rate"
+                        valA={sessA.activity.average_heartrate ? `${Math.round(sessA.activity.average_heartrate)} bpm` : '—'}
+                        valB={sessB.activity.average_heartrate ? `${Math.round(sessB.activity.average_heartrate)} bpm` : '—'}
+                        higherIsBetter={false} />
+                      <StatCard label="Max Heart Rate"
+                        valA={sessA.activity.max_heartrate ? `${Math.round(sessA.activity.max_heartrate)} bpm` : '—'}
+                        valB={sessB.activity.max_heartrate ? `${Math.round(sessB.activity.max_heartrate)} bpm` : '—'}
+                        higherIsBetter={false} />
                     </div>
 
                     {/* Km splits */}
