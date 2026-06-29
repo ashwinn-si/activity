@@ -46,8 +46,8 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
   const [tooltip, setTooltip] = useState<{
     date: string;
     acts: Activity[];
-    x: number;
-    y: number;
+    mx: number; // viewport-relative mouse X
+    my: number; // viewport-relative mouse Y
   } | null>(null);
 
   // All years that have at least one activity
@@ -144,13 +144,13 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
 
   const handleMouseEnter = (e: React.MouseEvent, dateKey: string) => {
     const acts = dayMap[dateKey] ?? [];
+    if (!acts.length) { setTooltip(null); return; } // skip empty days
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const container = (e.currentTarget as HTMLElement).closest('.heatmap-scroll')?.getBoundingClientRect();
     setTooltip({
       date: dateKey,
       acts,
-      x: rect.left - (container?.left ?? 0) + rect.width / 2,
-      y: rect.top - (container?.top ?? 0),
+      mx: rect.left + rect.width / 2,
+      my: rect.top,
     });
   };
 
@@ -205,7 +205,7 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
       </div>
 
       {/* Heatmap grid */}
-      <div className="heatmap-scroll overflow-x-auto relative">
+      <div className="heatmap-scroll overflow-x-auto">
         <div style={{ minWidth: weeks.length * 14 + 32 }}>
           {/* Month labels row */}
           <div className="relative mb-1" style={{ height: 16, paddingLeft: 28 }}>
@@ -266,53 +266,6 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
           </div>
         </div>
 
-        {/* Tooltip */}
-        {tooltip && (
-          <div
-            className="absolute z-50 pointer-events-none"
-            style={{ left: tooltip.x, top: tooltip.y - 8, transform: 'translate(-50%, -100%)' }}
-          >
-            <div
-              className="rounded-xl px-3 py-2 text-xs shadow-xl"
-              style={{
-                background: 'var(--tooltip-background)',
-                border: '1px solid var(--tooltip-border)',
-                minWidth: 160,
-                maxWidth: 224,
-              }}
-            >
-              <p className="font-semibold text-text-primary mb-1.5">
-                {new Date(tooltip.date + 'T00:00:00').toLocaleDateString('en-US', {
-                  weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
-                })}
-              </p>
-              {tooltip.acts.length === 0 ? (
-                <p className="text-text-muted">No activity</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {tooltip.acts.slice(0, 3).map((a) => {
-                    const meta = getSportMeta(a.type);
-                    const Icon = meta.icon;
-                    return (
-                      <div key={a.id} className="flex items-center gap-1.5">
-                        <Icon className="w-3 h-3 flex-shrink-0" style={{ color: meta.hex }} />
-                        <span className="text-text-primary truncate font-medium" style={{ maxWidth: 128 }}>{a.name}</span>
-                      </div>
-                    );
-                  })}
-                  {tooltip.acts.length > 3 && (
-                    <p className="text-text-muted text-[10px]">+{tooltip.acts.length - 3} more</p>
-                  )}
-                  <div className="pt-1 mt-0.5 border-t border-border/40 text-text-muted">
-                    {formatDistance(tooltip.acts.reduce((s, a) => s + a.distance, 0))}
-                    {' · '}
-                    {formatDuration(tooltip.acts.reduce((s, a) => s + a.moving_time, 0))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Legend */}
@@ -331,6 +284,77 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
         ))}
         <span className="text-[10px] text-text-muted">More</span>
       </div>
+
+      {/* Tooltip — fixed so scroll / container offset can't affect it */}
+      {tooltip && (
+        <div
+          className="fixed z-[9999] pointer-events-none"
+          style={{
+            left: tooltip.mx,
+            top: tooltip.my - 10,
+            transform: 'translate(-50%, -100%)',
+          }}
+        >
+          {/* Arrow */}
+          <div className="relative">
+            <div
+              className="rounded-xl px-3 py-2.5 text-xs shadow-2xl"
+              style={{
+                background: 'var(--background)',
+                border: '1px solid var(--border)',
+                minWidth: 170,
+                maxWidth: 230,
+                boxShadow: '0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10)',
+              }}
+            >
+              {/* Date header */}
+              <p className="font-semibold text-text-primary mb-2 text-[11px]">
+                {new Date(tooltip.date + 'T00:00:00').toLocaleDateString('en-US', {
+                  weekday: 'long', month: 'short', day: 'numeric',
+                })}
+              </p>
+
+              {/* Activities */}
+              <div className="space-y-1.5">
+                {tooltip.acts.slice(0, 4).map((a) => {
+                  const meta = getSportMeta(a.type);
+                  const Icon = meta.icon;
+                  return (
+                    <div key={a.id} className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
+                        style={{ background: `${meta.hex}18`, color: meta.hex }}>
+                        <Icon className="w-3 h-3" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-text-primary font-medium truncate" style={{ maxWidth: 140 }}>{a.name}</p>
+                        <p className="text-text-muted text-[10px]">
+                          {formatDistance(a.distance)} · {formatDuration(a.moving_time)}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+                {tooltip.acts.length > 4 && (
+                  <p className="text-text-muted text-[10px] pt-0.5">
+                    +{tooltip.acts.length - 4} more
+                  </p>
+                )}
+              </div>
+
+              {/* Day total (only when >1 activity) */}
+              {tooltip.acts.length > 1 && (
+                <div className="mt-2 pt-2 border-t border-border/50 flex justify-between text-[10px] text-text-muted">
+                  <span>{tooltip.acts.length} activities</span>
+                  <span>{formatDistance(tooltip.acts.reduce((s, a) => s + a.distance, 0))}</span>
+                </div>
+              )}
+            </div>
+            {/* Down-pointing arrow */}
+            <div className="absolute left-1/2 -translate-x-1/2 -bottom-[5px] w-2.5 h-2.5 rotate-45"
+              style={{ background: 'var(--background)', borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
