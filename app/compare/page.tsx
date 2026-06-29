@@ -12,6 +12,7 @@ import {
   Minus, ChevronRight, RotateCcw,
 } from 'lucide-react';
 import { getSportMeta } from '@/utils/sportConfig';
+import { fmtActivityTimes } from '@/utils/timeUtils';
 import Link from 'next/link';
 import useStravaStore from '@/store/useStravaStore';
 import { formatDistance, formatDuration, formatPace, formatSpeed } from '@/utils/formatters';
@@ -211,19 +212,16 @@ function StatCard({
   );
 }
 
-const IST = 'Asia/Kolkata';
-function fmtTimeIST(date: Date) {
-  return date.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: IST });
-}
-
 function SessionHeader({ sess, slot }: { sess: SessionData; slot: 'A' | 'B' }) {
   const color = slot === 'A' ? COLOR_A : COLOR_B;
   const m = getSportMeta(sess.activity.type);
   const Icon = m.icon;
 
-  const startDate = new Date(sess.activity.start_date);
+  const startDateLocal = sess.activity.start_date_local as string | undefined;
   const elapsedTime = sess.activity.elapsed_time as number | undefined;
-  const endDate = elapsedTime ? new Date(startDate.getTime() + elapsedTime * 1000) : null;
+  const { localRange, istLabel, isIST } = fmtActivityTimes(
+    sess.activity.start_date, startDateLocal, elapsedTime,
+  );
 
   return (
     <div
@@ -241,13 +239,13 @@ function SessionHeader({ sess, slot }: { sess: SessionData; slot: 'A' | 'B' }) {
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-text-primary leading-snug truncate">{sess.activity.name}</p>
         <p className="text-xs text-text-secondary mt-1">
-          {startDate.toLocaleDateString('en-IN', {
-            weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: IST,
+          {new Date(sess.activity.start_date).toLocaleDateString('en-IN', {
+            weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+            timeZone: 'Asia/Kolkata',
           })}
         </p>
         <p className="text-xs mt-0.5 font-mono" style={{ color, opacity: 0.9 }}>
-          {fmtTimeIST(startDate)}
-          {endDate && <> → {fmtTimeIST(endDate)}</>}
+          {isIST ? `${localRange} IST` : <>{localRange} · {istLabel}</>}
         </p>
         <div className="flex items-center gap-3 mt-2 text-xs font-mono text-text-secondary">
           <span>{formatDistance(sess.activity.distance)}</span>

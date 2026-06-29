@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { formatDistance, formatDuration, formatSpeed, formatPace } from '@/utils/formatters';
 import { getSportMeta, getSportBadgeVariant } from '@/utils/sportConfig';
+import { fmtActivityTimes } from '@/utils/timeUtils';
 import { Badge } from '@/components/ui/Badge';
 import { Heart } from 'lucide-react';
 
@@ -24,21 +25,18 @@ interface ActivityCardProps {
   };
 }
 
-const IST = 'Asia/Kolkata';
-
-function fmtTimeIST(date: Date) {
-  return date.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: IST });
-}
-
 export function ActivityCard({ activity }: ActivityCardProps) {
   const meta = getSportMeta(activity.type);
   const Icon = meta.icon;
   const badgeVariant = getSportBadgeVariant(activity.type);
 
+  const { localRange, istLabel, isIST } = fmtActivityTimes(
+    activity.start_date,
+    activity.start_date_local,
+    activity.elapsed_time,
+  );
+
   const startDate = new Date(activity.start_date);
-  const endDate = activity.elapsed_time
-    ? new Date(startDate.getTime() + activity.elapsed_time * 1000)
-    : null;
 
   return (
     <motion.div
@@ -72,12 +70,12 @@ export function ActivityCard({ activity }: ActivityCardProps) {
                 </h3>
                 <p className="text-xs text-text-secondary mt-0.5">
                   {startDate.toLocaleDateString('en-IN', {
-                    weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', timeZone: IST,
+                    weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+                    timeZone: 'Asia/Kolkata',
                   })}
                 </p>
                 <p className="text-xs mt-0.5 font-mono" style={{ color: meta.hex, opacity: 0.85 }}>
-                  {fmtTimeIST(startDate)}
-                  {endDate && <> → {fmtTimeIST(endDate)}</>}
+                  {isIST ? `${localRange} IST` : <>{localRange} · {istLabel}</>}
                 </p>
               </div>
             </div>
