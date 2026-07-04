@@ -9,7 +9,7 @@ import {
 } from 'recharts';
 import {
   GitCompare, ArrowLeft, TrendingUp, TrendingDown,
-  Minus, ChevronRight, RotateCcw,
+  Minus, ChevronRight, RotateCcw, Trash2, Plus, Printer,
 } from 'lucide-react';
 import { getSportMeta } from '@/utils/sportConfig';
 import { fmtActivityTimes } from '@/utils/timeUtils';
@@ -36,10 +36,10 @@ interface Streams {
 interface SessionData { activity: Activity; streams: Streams }
 
 /* ─── constants ──────────────────────────────────────────────── */
-// Hard hex — CSS vars don't resolve inside Recharts SVG context
-const COLOR_A = '#3b82f6'; // blue
-const COLOR_B = '#f97316'; // orange
-
+const COLORS = ['#3b82f6', '#f97316', '#10b981', '#a855f7'];
+const SLOT_LABELS = ['A', 'B', 'C', 'D'];
+const COLOR_A = COLORS[0];
+const COLOR_B = COLORS[1];
 
 /* ─── helpers ────────────────────────────────────────────────── */
 function fmtSplit(s: number) {
@@ -74,7 +74,7 @@ function interp(pts: { km: number; val: number }[], target: number): number | nu
 }
 
 function buildOverlay(
-  a: SessionData, b: SessionData,
+  sessions: SessionData[],
   key: 'velocity' | 'heartrate' | 'altitude',
   usePace: boolean,
 ) {
@@ -95,37 +95,32 @@ function buildOverlay(
     }, []);
   };
 
-  const aV = extract(a), bV = extract(b);
-  if (!aV.length && !bV.length) return [];
+  const seriesList = sessions.map(s => extract(s));
+  if (seriesList.every(s => s.length === 0)) return [];
 
-  // If only one session has data, render that series alone over its full range
-  if (!aV.length || !bV.length) {
-    const pts = aV.length ? aV : bV;
-    const isA = aV.length > 0;
-    const STEP = 0.05;
-    const result: { km: number; a?: number; b?: number }[] = [];
-    for (let km = pts[0].km + STEP; km <= pts[pts.length - 1].km + 0.001; km += STEP) {
-      const kmR = Math.round(km * 100) / 100;
-      const v = interp(pts, kmR);
-      if (v !== null) result.push(isA ? { km: kmR, a: v } : { km: kmR, b: v });
-    }
-    return result;
-  }
+  const validSeries = seriesList.filter(s => s.length > 0);
+  if (validSeries.length === 0) return [];
 
-  // Overlap range — both sessions have data
-  const startKm = Math.max(aV[0].km, bV[0].km);
-  const maxKm   = Math.min(aV[aV.length - 1].km, bV[bV.length - 1].km);
+  // Union range
+  const startKm = Math.min(...validSeries.map(s => s[0].km));
+  const maxKm   = Math.max(...validSeries.map(s => s[s.length - 1].km));
   if (maxKm <= startKm) return [];
 
-  // Sample both at fixed 0.05 km grid — guarantees aligned, continuous lines
   const STEP = 0.05;
-  const result: { km: number; a?: number; b?: number }[] = [];
+  const result: { km: number; a?: number; b?: number; c?: number; d?: number }[] = [];
   for (let km = startKm + STEP; km <= maxKm + 0.001; km += STEP) {
     const kmR = Math.round(km * 100) / 100;
-    const av = interp(aV, kmR);
-    const bv = interp(bV, kmR);
-    if (av !== null || bv !== null)
-      result.push({ km: kmR, a: av ?? undefined, b: bv ?? undefined });
+    const row: { km: number; a?: number; b?: number; c?: number; d?: number } = { km: kmR };
+    let hasAny = false;
+    sessions.forEach((_, idx) => {
+      const val = interp(seriesList[idx], kmR);
+      if (val !== null) {
+        const keyChar = idx === 0 ? 'a' : idx === 1 ? 'b' : idx === 2 ? 'c' : 'd';
+        row[keyChar] = val;
+        hasAny = true;
+      }
+    });
+    if (hasAny) result.push(row);
   }
   return result;
 }
@@ -176,44 +171,63 @@ function SportTypeStep({
 }
 
 function StatCard({
-  label, valA, valB, higherIsBetter = true,
+  label, vals, higherIsBetter = true,
 }: {
-  label: string; valA: string; valB: string; higherIsBetter?: boolean;
+  label: string; vals: (string | undefined)[]; higherIsBetter?: boolean;
 }) {
-  // Try to parse a numeric winner
-  const numA = parseFloat(valA.replace(/[^\d.]/g, ''));
-  const numB = parseFloat(valB.replace(/[^\d.]/g, ''));
-  const aWins = !isNaN(numA) && !isNaN(numB) && (higherIsBetter ? numA > numB : numA < numB);
-  const bWins = !isNaN(numA) && !isNaN(numB) && (higherIsBetter ? numB > numA : numB < numA);
+  const parsedVals = vals.map(v => {
+    if (!v || v === '—') return NaN;
+    const cleaned = v.replace(/[^\d.]/g, '');
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? NaN : num;
+  });
+
+  const validVals = parsedVals.filter(v => !isNaN(v));
+  let bestVal = higherIsBetter ? -Infinity : Infinity;
+  if (validVals.length > 0) {
+    bestVal = higherIsBetter ? Math.max(...validVals) : Math.min(...validVals);
+  }
+
+  const winFlags = parsedVals.map(v => {
+    if (isNaN(v) || bestVal === Infinity || bestVal === -Infinity) return false;
+    return Math.abs(v - bestVal) < 0.0001;
+  });
 
   return (
     <div className="glass-panel rounded-2xl p-4 flex flex-col gap-2">
       <p className="text-[10px] uppercase tracking-widest font-semibold text-text-secondary">{label}</p>
-      <div className="flex items-center gap-2">
-        {/* A */}
-        <div className={`flex-1 rounded-xl px-3 py-2.5 transition-colors ${aWins ? 'bg-[#3b82f6]/12' : 'bg-white/4'}`}>
-          <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: COLOR_A }}>A</p>
-          <p className={`font-mono font-bold text-base leading-none ${aWins ? '' : 'text-text-secondary'}`}
-             style={{ color: aWins ? COLOR_A : undefined }}>
-            {valA}
-          </p>
-        </div>
-        <span className="text-text-muted text-xs font-medium flex-shrink-0">vs</span>
-        {/* B */}
-        <div className={`flex-1 rounded-xl px-3 py-2.5 transition-colors ${bWins ? 'bg-[#f97316]/12' : 'bg-white/4'}`}>
-          <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: COLOR_B }}>B</p>
-          <p className={`font-mono font-bold text-base leading-none ${bWins ? '' : 'text-text-secondary'}`}
-             style={{ color: bWins ? COLOR_B : undefined }}>
-            {valB}
-          </p>
-        </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {vals.map((val, idx) => {
+          if (val === undefined) return null;
+          const isWinner = winFlags[idx];
+          const color = COLORS[idx];
+          return (
+            <div
+              key={idx}
+              className="flex-1 min-w-[70px] rounded-xl px-2.5 py-2 transition-colors"
+              style={{
+                background: isWinner ? `${color}12` : 'rgba(255,255,255,0.04)',
+              }}
+            >
+              <p className="text-[9px] uppercase tracking-wider mb-0.5" style={{ color }}>
+                {SLOT_LABELS[idx]}
+              </p>
+              <p
+                className={`font-mono font-bold text-sm leading-none`}
+                style={{ color: isWinner ? color : 'var(--text-secondary)' }}
+              >
+                {val}
+              </p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function SessionHeader({ sess, slot }: { sess: SessionData; slot: 'A' | 'B' }) {
-  const color = slot === 'A' ? COLOR_A : COLOR_B;
+function SessionHeader({ sess, slot, idx }: { sess: SessionData; slot: string; idx: number }) {
+  const color = COLORS[idx];
   const m = getSportMeta(sess.activity.type);
   const Icon = m.icon;
 
@@ -262,13 +276,18 @@ function SessionHeader({ sess, slot }: { sess: SessionData; slot: 'A' | 'B' }) {
   );
 }
 
-function SplitTable({ sessA, sessB, nameA, nameB }: {
-  sessA: SessionData; sessB: SessionData; nameA: string; nameB: string;
+function SplitTable({
+  sessions,
+  names,
+}: {
+  sessions: SessionData[];
+  names: string[];
 }) {
-  const splitsA = computeKmSplits(sessA.streams.distance?.data ?? [], sessA.streams.time?.data ?? []);
-  const splitsB = computeKmSplits(sessB.streams.distance?.data ?? [], sessB.streams.time?.data ?? []);
-  const rows = Math.min(splitsA.length, splitsB.length);
-  if (rows === 0) return null;
+  const splitsList = sessions.map(s =>
+    computeKmSplits(s.streams.distance?.data ?? [], s.streams.time?.data ?? [])
+  );
+  const rows = Math.min(...splitsList.map(s => s.length));
+  if (rows === 0 || isNaN(rows)) return null;
 
   return (
     <motion.div
@@ -276,60 +295,47 @@ function SplitTable({ sessA, sessB, nameA, nameB }: {
       className="glass-panel rounded-2xl p-6"
     >
       <h3 className="text-base font-semibold text-text-primary mb-1">Km Splits</h3>
-      <p className="text-sm text-text-secondary mb-4">Time for each km — winner highlighted.</p>
+      <p className="text-sm text-text-secondary mb-4">Time for each km — fastest split highlighted.</p>
       <div className="overflow-x-auto">
         <div className="overflow-y-auto" style={{ maxHeight: 400 }}>
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10" style={{ background: 'var(--background)' }}>
             <tr className="border-b border-border">
               <th className="pb-3 pt-1 text-left font-medium text-text-secondary w-12">Km</th>
-              <th className="pb-3 pt-1 text-center font-medium" style={{ color: COLOR_A }}>{nameA}</th>
-              <th className="pb-3 pt-1 text-center font-medium" style={{ color: COLOR_B }}>{nameB}</th>
-              <th className="pb-3 pt-1 text-right font-medium text-text-secondary">Δ</th>
+              {sessions.map((_, idx) => (
+                <th key={idx} className="pb-3 pt-1 text-center font-medium" style={{ color: COLORS[idx] }}>
+                  {names[idx]}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-border/30">
             {Array.from({ length: rows }, (_, i) => {
-              const a = splitsA[i]!, b = splitsB[i]!;
-              const diff = a.s - b.s;
-              const aFaster = diff < -2, bFaster = diff > 2;
-              const DiffIcon = Math.abs(diff) < 2 ? Minus : diff < 0 ? TrendingDown : TrendingUp;
-              const diffColor = Math.abs(diff) < 2 ? 'text-text-muted' : diff < 0 ? '' : '';
+              const rowSplits = splitsList.map(list => list[i]?.s ?? Infinity);
+              const minSplit = Math.min(...rowSplits);
 
               return (
-                <tr key={a.km} className="group">
-                  <td className="py-2.5 font-semibold text-text-primary">{a.km}</td>
-                  <td className="py-2.5 text-center">
-                    <span
-                      className={`font-mono text-sm px-2 py-0.5 rounded-lg ${aFaster ? 'font-bold' : ''}`}
-                      style={{
-                        color: COLOR_A,
-                        background: aFaster ? `${COLOR_A}18` : undefined,
-                      }}
-                    >
-                      {fmtSplit(a.s)}
-                    </span>
-                  </td>
-                  <td className="py-2.5 text-center">
-                    <span
-                      className={`font-mono text-sm px-2 py-0.5 rounded-lg ${bFaster ? 'font-bold' : ''}`}
-                      style={{
-                        color: COLOR_B,
-                        background: bFaster ? `${COLOR_B}18` : undefined,
-                      }}
-                    >
-                      {fmtSplit(b.s)}
-                    </span>
-                  </td>
-                  <td className={`py-2.5 text-right font-mono text-xs ${diffColor}`}>
-                    <span
-                      className="flex items-center justify-end gap-1"
-                      style={{ color: aFaster ? COLOR_A : bFaster ? COLOR_B : '#999' }}
-                    >
-                      <DiffIcon className="w-3 h-3" />
-                      {fmtSplit(Math.abs(diff))}
-                    </span>
-                  </td>
+                <tr key={i + 1} className="group">
+                  <td className="py-2.5 font-semibold text-text-primary">{i + 1}</td>
+                  {sessions.map((_, idx) => {
+                    const splitVal = splitsList[idx][i]?.s;
+                    if (splitVal === undefined) return <td key={idx} className="py-2.5 text-center">—</td>;
+                    const isFastest = splitVal === minSplit && minSplit !== Infinity;
+                    const color = COLORS[idx];
+                    return (
+                      <td key={idx} className="py-2.5 text-center">
+                        <span
+                          className={`font-mono text-sm px-2 py-0.5 rounded-lg ${isFastest ? 'font-bold' : ''}`}
+                          style={{
+                            color: color,
+                            background: isFastest ? `${color}18` : undefined,
+                          }}
+                        >
+                          {fmtSplit(splitVal)}
+                        </span>
+                      </td>
+                    );
+                  })}
                 </tr>
               );
             })}
@@ -347,15 +353,19 @@ function SplitTable({ sessA, sessB, nameA, nameB }: {
 }
 
 function OverlayChart({
-  sessA, sessB, nameA, nameB, dataKey, usePace,
+  sessions,
+  names,
+  dataKey,
+  usePace,
 }: {
-  sessA: SessionData; sessB: SessionData; nameA: string; nameB: string;
+  sessions: SessionData[];
+  names: string[];
   dataKey: 'velocity' | 'heartrate' | 'altitude';
   usePace: boolean;
 }) {
   const data = useMemo(
-    () => buildOverlay(sessA, sessB, dataKey, usePace),
-    [sessA, sessB, dataKey, usePace],
+    () => buildOverlay(sessions, dataKey, usePace),
+    [sessions, dataKey, usePace],
   );
   if (data.length === 0) return null;
 
@@ -374,25 +384,27 @@ function OverlayChart({
     return `${Math.round(v)} bpm`;
   };
 
-  // For elevation and HR, auto-scale Y-axis with a small margin
-  const allVals = data.flatMap((d) => [d.a, d.b]).filter((v): v is number => v != null);
+  const allVals = data.flatMap((d) => [d.a, d.b, d.c, d.d]).filter((v): v is number => v != null);
   const minVal = Math.min(...allVals), maxVal = Math.max(...allVals);
   const pad = (maxVal - minVal) * 0.15 || 1;
   const yDomain: [number | string, number | string] = isVelocity
     ? ([0, 'auto'] as [number, string])
     : ([Math.max(0, minVal - pad), maxVal + pad] as [number, number]);
 
+  const activeKeys: ('a' | 'b' | 'c' | 'd')[] = ['a', 'b', 'c', 'd'].slice(0, sessions.length) as any;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
       className="glass-panel rounded-2xl p-6"
     >
-      <div className="flex items-center gap-3 mb-1">
-        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: COLOR_A }} />
-        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: COLOR_B }} />
+      <div className="flex items-center gap-3 mb-1 flex-wrap">
+        {activeKeys.map((k, idx) => (
+          <span key={k} className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: COLORS[idx] }} />
+        ))}
         <h3 className="text-base font-semibold text-text-primary">{title}</h3>
       </div>
-      <p className="text-sm text-text-secondary mb-4 ml-9">Overlaid on the same distance axis.</p>
+      <p className="text-sm text-text-secondary mb-4 ml-6">Overlaid on the same distance axis.</p>
 
       <ResponsiveContainer width="100%" height={240}>
         <LineChart data={data} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
@@ -417,23 +429,34 @@ function OverlayChart({
             labelStyle={{ color: '#aaa', marginBottom: 4 }}
             formatter={(v: unknown, name: unknown) => [
               typeof v === 'number' ? fmtTip(v) : String(v),
-              name === 'a' ? nameA : nameB,
+              name === 'a' ? names[0] : name === 'b' ? names[1] : name === 'c' ? names[2] : names[3],
             ]}
             labelFormatter={(l) => `${typeof l === 'number' ? l.toFixed(2) : l} km`}
           />
           <Legend
-            formatter={(v) => (
-              <span style={{ color: v === 'a' ? COLOR_A : COLOR_B, fontSize: 12 }}>
-                {v === 'a' ? nameA : nameB}
-              </span>
-            )}
+            formatter={(v) => {
+              const idx = v === 'a' ? 0 : v === 'b' ? 1 : v === 'c' ? 2 : 3;
+              return (
+                <span style={{ color: COLORS[idx], fontSize: 12 }}>
+                  {names[idx]}
+                </span>
+              );
+            }}
           />
-          <Line type="monotone" dataKey="a" stroke={COLOR_A} strokeWidth={2.5}
-            dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: COLOR_A }}
-            isAnimationActive={false} name="a" connectNulls />
-          <Line type="monotone" dataKey="b" stroke={COLOR_B} strokeWidth={2.5}
-            dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: COLOR_B }}
-            isAnimationActive={false} name="b" connectNulls />
+          {activeKeys.map((k, idx) => (
+            <Line
+              key={k}
+              type="monotone"
+              dataKey={k}
+              stroke={COLORS[idx]}
+              strokeWidth={2.5}
+              dot={false}
+              activeDot={{ r: 4, strokeWidth: 0, fill: COLORS[idx] }}
+              isAnimationActive={false}
+              name={k}
+              connectNulls
+            />
+          ))}
         </LineChart>
       </ResponsiveContainer>
     </motion.div>
@@ -448,22 +471,23 @@ function ComparePageInner() {
 
   // step: 'sport' | 'sessions' | 'results'
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
-  const [activityA, setActivityA] = useState<Activity | null>(null);
-  const [activityB, setActivityB] = useState<Activity | null>(null);
-  const [sessA, setSessA] = useState<SessionData | null>(null);
-  const [sessB, setSessB] = useState<SessionData | null>(null);
-  const [loadingA, setLoadingA] = useState(false);
-  const [loadingB, setLoadingB] = useState(false);
+  const [selectedActivities, setSelectedActivities] = useState<(Activity | null)[]>([null, null]);
+  const [sessions, setSessions] = useState<(SessionData | null)[]>([null, null]);
+  const [loadingStates, setLoadingStates] = useState<boolean[]>([false, false]);
 
   useEffect(() => { if (activities.length === 0) fetchAll(); }, [activities.length, fetchAll]);
 
   // Pre-select sport from URL param
   useEffect(() => {
-    if (preloadAId && activities.length > 0 && !activityA) {
+    if (preloadAId && activities.length > 0 && selectedActivities[0] === null) {
       const found = activities.find((a) => String(a.id) === preloadAId) ?? null;
-      if (found) { setSelectedSport(found.type); setActivityA(found); }
+      if (found) {
+        setSelectedSport(found.type);
+        setSelectedActivities([found, null]);
+      }
     }
-  }, [preloadAId, activities, activityA]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preloadAId, activities.length]);
 
   const sportCounts = useMemo(() => {
     const c: Record<string, number> = {};
@@ -473,42 +497,121 @@ function ComparePageInner() {
 
   const sportTypes = Object.keys(sportCounts);
 
-  const fetchSession = async (id: number, set: (s: SessionData | null) => void, setL: (v: boolean) => void) => {
-    setL(true);
-    try {
-      const res = await fetch(`/api/activities/${id}`);
-      const d = await res.json();
-      set({ activity: d.activity, streams: d.streams });
-    } finally { setL(false); }
+  // Sync lengths and fetch streams when selectedActivities change
+  const activityIdsStr = selectedActivities.map(a => a?.id || 0).join(',');
+  useEffect(() => {
+    // Sync array sizes
+    if (sessions.length !== selectedActivities.length) {
+      setSessions(prev => {
+        const next = [...prev];
+        while (next.length < selectedActivities.length) next.push(null);
+        while (next.length > selectedActivities.length) next.pop();
+        return next;
+      });
+      setLoadingStates(prev => {
+        const next = [...prev];
+        while (next.length < selectedActivities.length) next.push(false);
+        while (next.length > selectedActivities.length) next.pop();
+        return next;
+      });
+    }
+
+    selectedActivities.forEach((act, idx) => {
+      if (!act) {
+        if (sessions[idx] !== null) {
+          setSessions(prev => {
+            const next = [...prev];
+            next[idx] = null;
+            return next;
+          });
+        }
+        return;
+      }
+
+      if (sessions[idx]?.activity.id === act.id) {
+        return;
+      }
+
+      const fetchSession = async () => {
+        setLoadingStates(prev => {
+          const next = [...prev];
+          next[idx] = true;
+          return next;
+        });
+        try {
+          const res = await fetch(`/api/activities/${act.id}`);
+          const d = await res.json();
+          setSessions(prev => {
+            const next = [...prev];
+            next[idx] = { activity: d.activity, streams: d.streams };
+            return next;
+          });
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setLoadingStates(prev => {
+            const next = [...prev];
+            next[idx] = false;
+            return next;
+          });
+        }
+      };
+
+      fetchSession();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activityIdsStr]);
+
+  const handleSelectActivity = (idx: number, act: Activity | null) => {
+    setSelectedActivities(prev => {
+      const next = [...prev];
+      next[idx] = act;
+      return next;
+    });
   };
 
-  useEffect(() => {
-    if (activityA) fetchSession(activityA.id, setSessA, setLoadingA);
-    else setSessA(null);
-  }, [activityA]);
+  const addSessionSlot = () => {
+    if (selectedActivities.length < 4) {
+      setSelectedActivities(prev => [...prev, null]);
+    }
+  };
 
-  useEffect(() => {
-    if (activityB) fetchSession(activityB.id, setSessB, setLoadingB);
-    else setSessB(null);
-  }, [activityB]);
+  const removeSessionSlot = (index: number) => {
+    if (selectedActivities.length > 2) {
+      setSelectedActivities(prev => prev.filter((_, idx) => idx !== index));
+      setSessions(prev => prev.filter((_, idx) => idx !== index));
+      setLoadingStates(prev => prev.filter((_, idx) => idx !== index));
+    }
+  };
+
+  const getExcludeIds = (idx: number) => {
+    return selectedActivities
+      .filter((_, i) => i !== idx)
+      .map(act => act?.id)
+      .filter((id): id is number => id !== undefined);
+  };
 
   const reset = () => {
-    setSelectedSport(null); setActivityA(null); setActivityB(null);
-    setSessA(null); setSessB(null);
+    setSelectedSport(null);
+    setSelectedActivities([null, null]);
+    setSessions([null, null]);
+    setLoadingStates([false, false]);
   };
 
-  const bothReady = sessA && sessB && !loadingA && !loadingB;
-  const hasVelocity = bothReady && (sessA.streams.velocity_smooth?.data?.length ?? 0) > 0
-                               && (sessB.streams.velocity_smooth?.data?.length ?? 0) > 0;
-  const hasHR   = bothReady && ((sessA.streams.heartrate?.data?.length ?? 0) > 0
-                            ||  (sessB.streams.heartrate?.data?.length ?? 0) > 0);
-  const hasAlt  = bothReady && (sessA.streams.altitude?.data?.length ?? 0) > 0
-                            && (sessB.streams.altitude?.data?.length ?? 0) > 0;
+  const activeSessions = sessions.filter((s): s is SessionData => s !== null);
+  const activeNames = activeSessions.map(s => s.activity.name);
+  
+  const showResults = activeSessions.length >= 2;
+  const isFetching = loadingStates.some(Boolean);
+
+  const hasVelocity = showResults && activeSessions.every(s => (s.streams.velocity_smooth?.data?.length ?? 0) > 0);
+  const hasHR   = showResults && activeSessions.some(s => (s.streams.heartrate?.data?.length ?? 0) > 0);
+  const hasAlt  = showResults && activeSessions.every(s => (s.streams.altitude?.data?.length ?? 0) > 0);
 
   const sportUsePace = selectedSport ? getSportMeta(selectedSport).usePace : true;
 
   // Step indicator
-  const step = !selectedSport ? 1 : !activityA || !activityB ? 2 : 3;
+  const step = !selectedSport ? 1 : selectedActivities.filter(Boolean).length < 2 ? 2 : 3;
 
   return (
     <main className="flex-1 overflow-auto pb-20 lg:pb-6">
@@ -529,13 +632,23 @@ function ComparePageInner() {
           </div>
 
           {selectedSport && (
-            <button
-              onClick={reset}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 transition-all duration-200 text-sm font-medium"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              Reset
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => window.print()}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 transition-all duration-200 text-sm font-medium cursor-pointer"
+                title="Export comparison as PDF"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                Export PDF
+              </button>
+              <button
+                onClick={reset}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 transition-all duration-200 text-sm font-medium"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Reset
+              </button>
+            </div>
           )}
           {!selectedSport && <div className="w-20" />}
         </div>
@@ -603,146 +716,186 @@ function ComparePageInner() {
               </div>
 
               <p className="text-sm text-text-secondary mb-4 font-medium uppercase tracking-widest">
-                Step 2 · Choose two sessions
+                Step 2 · Choose sessions to compare
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                {/* A */}
-                <div className="glass-panel rounded-2xl p-4 border-t-2" style={{ borderColor: COLOR_A }}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold text-white" style={{ background: COLOR_A }}>A</div>
-                    <span className="text-sm font-medium text-text-primary">Session A</span>
-                  </div>
-                  <SessionPicker
-                    label=""
-                    accentColor={COLOR_A}
-                    activities={activities}
-                    selected={activityA}
-                    onSelect={(a) => { setActivityA(a); setActivityB(null); }}
-                    filterType={selectedSport}
-                    excludeIds={activityB ? [activityB.id] : []}
-                  />
-                </div>
-
-                {/* B */}
-                <div className="glass-panel rounded-2xl p-4 border-t-2" style={{ borderColor: COLOR_B }}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold text-white" style={{ background: COLOR_B }}>B</div>
-                    <span className="text-sm font-medium text-text-primary">Session B</span>
-                  </div>
-                  <SessionPicker
-                    label=""
-                    accentColor={COLOR_B}
-                    activities={activities}
-                    selected={activityB}
-                    onSelect={setActivityB}
-                    filterType={selectedSport}
-                    excludeIds={activityA ? [activityA.id] : []}
-                  />
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {selectedActivities.map((activity, idx) => {
+                  const color = COLORS[idx];
+                  const label = SLOT_LABELS[idx];
+                  return (
+                    <div key={idx} className="glass-panel rounded-2xl p-4 border-t-2" style={{ borderColor: color }}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold text-white" style={{ background: color }}>{label}</div>
+                          <span className="text-sm font-medium text-text-primary">Session {label}</span>
+                        </div>
+                        {selectedActivities.length > 2 && (
+                          <button
+                            onClick={() => removeSessionSlot(idx)}
+                            className="p-1.5 rounded-lg text-text-secondary hover:text-red-400 transition-colors"
+                            title="Remove session"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      <SessionPicker
+                        label=""
+                        accentColor={color}
+                        activities={activities}
+                        selected={activity}
+                        onSelect={(act) => handleSelectActivity(idx, act)}
+                        filterType={selectedSport}
+                        excludeIds={getExcludeIds(idx)}
+                      />
+                    </div>
+                  );
+                })}
               </div>
 
+              {/* Add Session Button */}
+              {selectedActivities.length < 4 && (
+                <div className="flex justify-center mb-8">
+                  <button
+                    onClick={addSessionSlot}
+                    className="flex items-center gap-2 px-5 py-2 rounded-xl border border-dashed border-white/10 hover:border-accent-ride/40 text-text-secondary hover:text-text-primary transition-all duration-300 text-sm font-medium cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Another Session
+                  </button>
+                </div>
+              )}
+
               {/* Loading */}
-              {(loadingA || loadingB) && (
+              {isFetching && (
                 <div className="space-y-4">
                   {[1,2,3].map(i => <Skeleton key={i} className="h-40" />)}
                 </div>
               )}
 
               {/* ── Results ── */}
-              {bothReady && (() => {
-                const nameA = sessA.activity.name;
-                const nameB = sessB.activity.name;
-                return (
-                  <motion.div
-                    initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                    className="space-y-5"
-                  >
-                    {/* Session headers */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <SessionHeader sess={sessA} slot="A" />
-                      <SessionHeader sess={sessB} slot="B" />
-                    </div>
+              {showResults && !isFetching && (
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+                  className="space-y-5 mt-6"
+                >
+                  <style>{`
+                    @media print {
+                      body {
+                        background: white !important;
+                        color: black !important;
+                      }
+                      aside, nav, header, button, .no-print, [role="navigation"] {
+                        display: none !important;
+                      }
+                      main {
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        overflow: visible !important;
+                        width: 100% !important;
+                      }
+                      .glass-panel {
+                        border: 1px solid rgba(0, 0, 0, 0.15) !important;
+                        background: white !important;
+                        box-shadow: none !important;
+                        color: black !important;
+                      }
+                      p, span, h1, h2, h3, th, td {
+                        color: black !important;
+                      }
+                      svg {
+                        max-width: 100% !important;
+                      }
+                    }
+                  `}</style>
 
-                    {/* Stat grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      <StatCard label="Distance"
-                        valA={formatDistance(sessA.activity.distance)}
-                        valB={formatDistance(sessB.activity.distance)} />
-                      <StatCard label="Moving Time"
-                        valA={formatDuration(sessA.activity.moving_time)}
-                        valB={formatDuration(sessB.activity.moving_time)}
+                  <div className="hidden print:block mb-8 border-b pb-4">
+                    <h1 className="text-2xl font-bold">Strava Hub — Comparison Report</h1>
+                    <p className="text-xs text-text-secondary mt-1">
+                      Generated on {new Date().toLocaleDateString('en-IN', {
+                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                        timeZone: 'Asia/Kolkata',
+                      })}
+                    </p>
+                  </div>
+
+                  {/* Session headers */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
+                    {activeSessions.map((sess, idx) => (
+                      <SessionHeader key={sess.activity.id} sess={sess} slot={SLOT_LABELS[idx]} idx={idx} />
+                    ))}
+                  </div>
+
+                  {/* Stat grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <StatCard label="Distance"
+                      vals={activeSessions.map(s => formatDistance(s.activity.distance))} />
+                    <StatCard label="Moving Time"
+                      vals={activeSessions.map(s => formatDuration(s.activity.moving_time))}
+                      higherIsBetter={false} />
+                    {sportUsePace ? (
+                      <StatCard label="Avg Pace"
+                        vals={activeSessions.map(s => formatPace(s.activity.average_speed))}
                         higherIsBetter={false} />
-                      {sportUsePace ? (
-                        <StatCard label="Avg Pace"
-                          valA={formatPace(sessA.activity.average_speed)}
-                          valB={formatPace(sessB.activity.average_speed)}
-                          higherIsBetter={false} />
-                      ) : (
-                        <StatCard label="Avg Speed"
-                          valA={formatSpeed(sessA.activity.average_speed)}
-                          valB={formatSpeed(sessB.activity.average_speed)} />
-                      )}
-                      <StatCard label="Elevation"
-                        valA={`${Math.round(sessA.activity.elevation_gain ?? 0)} m`}
-                        valB={`${Math.round(sessB.activity.elevation_gain ?? 0)} m`} />
-                      <StatCard label="Max Speed"
-                        valA={`${((sessA.activity.max_speed ?? 0) * 3.6).toFixed(1)} km/h`}
-                        valB={`${((sessB.activity.max_speed ?? 0) * 3.6).toFixed(1)} km/h`} />
-                      {hasHR && (
-                        <StatCard label="Avg Heart Rate"
-                          valA={sessA.activity.average_heartrate ? `${Math.round(sessA.activity.average_heartrate)} bpm` : '—'}
-                          valB={sessB.activity.average_heartrate ? `${Math.round(sessB.activity.average_heartrate)} bpm` : '—'}
-                          higherIsBetter={false} />
-                      )}
-                      {hasHR && (
-                        <StatCard label="Max Heart Rate"
-                          valA={sessA.activity.max_heartrate ? `${Math.round(sessA.activity.max_heartrate)} bpm` : '—'}
-                          valB={sessB.activity.max_heartrate ? `${Math.round(sessB.activity.max_heartrate)} bpm` : '—'}
-                          higherIsBetter={false} />
-                      )}
-                    </div>
-
-                    {/* Km splits */}
-                    {sessA.streams.distance?.data && sessA.streams.time?.data &&
-                     sessB.streams.distance?.data && sessB.streams.time?.data && (
-                      <SplitTable sessA={sessA} sessB={sessB} nameA={nameA} nameB={nameB} />
+                    ) : (
+                      <StatCard label="Avg Speed"
+                        vals={activeSessions.map(s => formatSpeed(s.activity.average_speed))} />
                     )}
-
-                    {/* Charts */}
-                    {hasVelocity && (
-                      <OverlayChart sessA={sessA} sessB={sessB} nameA={nameA} nameB={nameB}
-                        dataKey="velocity" usePace={sportUsePace} />
+                    <StatCard label="Elevation"
+                      vals={activeSessions.map(s => `${Math.round(s.activity.elevation_gain ?? 0)} m`)} />
+                    <StatCard label="Max Speed"
+                      vals={activeSessions.map(s => `${((s.activity.max_speed ?? 0) * 3.6).toFixed(1)} km/h`)} />
+                    {hasHR && (
+                      <StatCard label="Avg Heart Rate"
+                        vals={activeSessions.map(s => s.activity.average_heartrate ? `${Math.round(s.activity.average_heartrate)} bpm` : '—')}
+                        higherIsBetter={false} />
                     )}
                     {hasHR && (
-                      <OverlayChart sessA={sessA} sessB={sessB} nameA={nameA} nameB={nameB}
-                        dataKey="heartrate" usePace={false} />
+                      <StatCard label="Max Heart Rate"
+                        vals={activeSessions.map(s => s.activity.max_heartrate ? `${Math.round(s.activity.max_heartrate)} bpm` : '—')}
+                        higherIsBetter={false} />
                     )}
-                    {hasAlt && (
-                      <OverlayChart sessA={sessA} sessB={sessB} nameA={nameA} nameB={nameB}
-                        dataKey="altitude" usePace={false} />
-                    )}
-                  </motion.div>
-                );
-              })()}
+                  </div>
+
+                  {/* Km splits */}
+                  {activeSessions.every(s => s.streams.distance?.data && s.streams.time?.data) && (
+                    <SplitTable sessions={activeSessions} names={activeNames} />
+                  )}
+
+                  {/* Charts */}
+                  {hasVelocity && (
+                    <OverlayChart sessions={activeSessions} names={activeNames}
+                      dataKey="velocity" usePace={sportUsePace} />
+                  )}
+                  {hasHR && (
+                    <OverlayChart sessions={activeSessions} names={activeNames}
+                      dataKey="heartrate" usePace={false} />
+                  )}
+                  {hasAlt && (
+                    <OverlayChart sessions={activeSessions} names={activeNames}
+                      dataKey="altitude" usePace={false} />
+                  )}
+                </motion.div>
+              )}
 
               {/* Pick B prompt */}
-              {activityA && !activityB && !loadingA && !loadingB && (
+              {selectedActivities[0] && !selectedActivities[1] && !isFetching && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   className="glass-panel rounded-2xl p-10 text-center text-text-secondary mt-4">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white mx-auto mb-3 text-lg" style={{ background: COLOR_B }}>B</div>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white mx-auto mb-3 text-lg" style={{ background: COLORS[1] }}>B</div>
                   <p className="font-medium">Now pick Session B</p>
                   <p className="text-sm mt-1 opacity-60">Only {selectedSport} sessions shown.</p>
                 </motion.div>
               )}
 
               {/* Pick A prompt */}
-              {!activityA && !loadingA && (
+              {!selectedActivities[0] && !loadingStates[0] && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   className="glass-panel rounded-2xl p-10 text-center text-text-secondary">
                   <div className="flex justify-center gap-3 mb-4">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white" style={{ background: COLOR_A }}>A</div>
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white" style={{ background: COLOR_B }}>B</div>
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white" style={{ background: COLORS[0] }}>A</div>
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white" style={{ background: COLORS[1] }}>B</div>
                   </div>
                   <p className="font-medium">Choose Session A to get started</p>
                 </motion.div>

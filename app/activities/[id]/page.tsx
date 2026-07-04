@@ -67,6 +67,95 @@ const item = {
   },
 };
 
+function HeartRateZones({
+  hrData,
+  timeData,
+  maxHR,
+}: {
+  hrData: number[];
+  timeData: number[];
+  maxHR: number;
+}) {
+  const zones = [
+    { name: 'Z1 Active Recovery', range: '50% - 60%', minPct: 0.5, maxPct: 0.6, color: '#3b82f6' },
+    { name: 'Z2 Aerobic / Endurance', range: '60% - 70%', minPct: 0.6, maxPct: 0.7, color: '#10b981' },
+    { name: 'Z3 Tempo / Rhythm', range: '70% - 80%', minPct: 0.7, maxPct: 0.8, color: '#f59e0b' },
+    { name: 'Z4 Threshold / Hard', range: '80% - 90%', minPct: 0.8, maxPct: 0.9, color: '#f97316' },
+    { name: 'Z5 Anaerobic / Max', range: '90% - 100%', minPct: 0.9, maxPct: 1.0, color: '#ef4444' },
+  ];
+
+  const zoneSeconds = [0, 0, 0, 0, 0];
+  let totalValidSeconds = 0;
+
+  for (let i = 0; i < hrData.length; i++) {
+    const hr = hrData[i];
+    const pct = hr / maxHR;
+
+    let delta = 1;
+    if (i > 0) {
+      delta = timeData[i] - timeData[i - 1];
+    }
+
+    if (pct >= 0.5) {
+      totalValidSeconds += delta;
+      if (pct >= 0.9) zoneSeconds[4] += delta;
+      else if (pct >= 0.8) zoneSeconds[3] += delta;
+      else if (pct >= 0.7) zoneSeconds[2] += delta;
+      else if (pct >= 0.6) zoneSeconds[1] += delta;
+      else zoneSeconds[0] += delta;
+    }
+  }
+
+  const formatDurationHMS = (totalSecs: number) => {
+    if (totalSecs === 0) return '0s';
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+
+    const parts = [];
+    if (hrs > 0) parts.push(`${hrs}h`);
+    if (mins > 0 || hrs > 0) parts.push(`${mins}m`);
+    if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
+    return parts.join(' ');
+  };
+
+  return (
+    <div className="glass-panel rounded-2xl p-6">
+      <h3 className="text-base font-semibold text-text-primary mb-1">Heart Rate Zones</h3>
+      <p className="text-sm text-text-secondary mb-5">
+        Time spent in training intensity zones based on max heart rate ({maxHR} bpm).
+      </p>
+
+      <div className="space-y-4">
+        {zones.map((zone, idx) => {
+          const seconds = zoneSeconds[idx];
+          const pct = totalValidSeconds > 0 ? (seconds / totalValidSeconds) * 100 : 0;
+          return (
+            <div key={idx} className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between text-xs font-semibold">
+                <span style={{ color: zone.color }}>{zone.name}</span>
+                <span className="text-text-secondary font-mono">
+                  {pct.toFixed(1)}% · {formatDurationHMS(seconds)}
+                </span>
+              </div>
+              <div className="h-3 w-full rounded-full bg-white/5 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${pct}%`,
+                    backgroundColor: zone.color,
+                    boxShadow: `0 0 8px ${zone.color}40`,
+                  }}
+                />
+              </div>
+            </div>
+          );
+        }).reverse()}
+      </div>
+    </div>
+  );
+}
+
 export default function ActivityDetailPage() {
   const params = useParams();
   const id = params.id as string;
@@ -131,6 +220,8 @@ export default function ActivityDetailPage() {
     activity.start_date_local as string | undefined,
     activity.elapsed_time,
   );
+
+  const maxHR = activity.max_heartrate || (streams?.heartrate?.data ? Math.max(...streams.heartrate.data) : 190);
 
   return (
     <main className="flex-1 overflow-auto pb-20 lg:pb-6">
@@ -290,18 +381,28 @@ export default function ActivityDetailPage() {
             )}
 
             {streams.heartrate?.data && streams.heartrate.data.length > 0 && (
-              <motion.div variants={item}>
-                <HeartRateChart
-                  data={
-                  distData
-                    .map((d: number, i: number) => ({
-                      distance: Number((d / 1000).toFixed(1)),
-                      heartrate: streams.heartrate?.data[i] || 0,
-                    }))
-                    .filter((_: unknown, i: number) => i % downsample === 0) || []
-                }
-                />
-              </motion.div>
+              <>
+                <motion.div variants={item}>
+                  <HeartRateChart
+                    data={
+                    distData
+                      .map((d: number, i: number) => ({
+                        distance: Number((d / 1000).toFixed(1)),
+                        heartrate: streams.heartrate?.data[i] || 0,
+                      }))
+                      .filter((_: unknown, i: number) => i % downsample === 0) || []
+                  }
+                  />
+                </motion.div>
+
+                <motion.div variants={item}>
+                  <HeartRateZones
+                    hrData={streams.heartrate.data}
+                    timeData={timeData}
+                    maxHR={maxHR}
+                  />
+                </motion.div>
+              </>
             )}
 
             {streams.altitude?.data && streams.altitude.data.length > 0 && (
