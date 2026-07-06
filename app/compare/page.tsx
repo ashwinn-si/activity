@@ -717,7 +717,8 @@ function ComparePageInner() {
         timeZone: 'Asia/Kolkata',
       })
       .split(', ')
-      .slice(1, 2);
+      .slice(1, 2)
+      .join('');
   });
   const activeNames = activeSessions.map((s, index) => dates[index]);
 
