@@ -716,11 +716,10 @@ function ComparePageInner() {
         year: 'numeric',
         timeZone: 'Asia/Kolkata',
       })
-      .split(',')[1];
+      .split(', ')
+      .slice(1, 2);
   });
-  const activeNames = activeSessions.map(
-    (s, index) => s.activity.name + ' (' + dates[index] + ' )'
-  );
+  const activeNames = activeSessions.map((s, index) => dates[index]);
 
   const showResults = activeSessions.length >= 2;
   const isFetching = loadingStates.some(Boolean);
