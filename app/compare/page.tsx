@@ -64,7 +64,7 @@ interface SessionData {
 }
 
 /* ─── constants ──────────────────────────────────────────────── */
-const COLORS = ['#3b82f6', '#f97316', '#10b981', '#a855f7'];
+const COLORS = ['#fc4c02', '#8b5cf6', '#10b981', '#ef4444'];
 const SLOT_LABELS = ['A', 'B', 'C', 'D'];
 const COLOR_A = COLORS[0];
 const COLOR_B = COLORS[1];
@@ -787,7 +787,7 @@ function ComparePageInner() {
                 <div
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
                     active
-                      ? 'bg-[#3b82f6]/15 text-[#3b82f6] border border-[#3b82f6]/30'
+                      ? 'bg-[#fc4c02]/15 text-[#fc4c02] border border-[#fc4c02]/30'
                       : done
                         ? 'bg-white/8 text-text-primary border border-white/15'
                         : 'bg-white/4 text-text-muted border border-transparent'
@@ -796,10 +796,10 @@ function ComparePageInner() {
                   <span
                     className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
                       active
-                        ? 'bg-[#3b82f6] text-white'
+                        ? 'bg-[#fc4c02] text-white'
                         : done
-                          ? 'bg-white/20 text-text-primary'
-                          : 'bg-white/8 text-text-muted'
+                          ? 'bg-text-secondary text-background'
+                          : 'bg-white/10 text-text-muted'
                     }`}
                   >
                     {n}

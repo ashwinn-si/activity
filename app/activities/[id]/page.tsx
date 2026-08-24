@@ -13,7 +13,8 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { KmSplitTable } from '@/components/KmSplitTable';
 import { BestEffortsTable } from '@/components/BestEffortsTable';
-import { ArrowLeft, GitCompare, X } from 'lucide-react';
+import { ArrowLeft, GitCompare, X, Trophy, Star } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import Link from 'next/link';
 import { getSportMeta, getSportBadgeVariant } from '@/utils/sportConfig';
 import { fmtActivityTimes } from '@/utils/timeUtils';
@@ -39,6 +40,13 @@ interface Activity {
       };
     };
   };
+  achievement_count?: number;
+  pr_count?: number;
+  best_efforts?: {
+    name: string;
+    pr_rank: number | null;
+    distance: number;
+  }[];
   [key: string]: unknown;
 }
 
@@ -183,6 +191,18 @@ export default function ActivityDetailPage() {
         const data = await res.json();
         setActivity(data.activity);
         setStreams(data.streams);
+        
+        // Trigger confetti if there's a PR!
+        if (data.activity.pr_count && data.activity.pr_count > 0) {
+          setTimeout(() => {
+            confetti({
+              particleCount: 150,
+              spread: 70,
+              origin: { y: 0.6 },
+              colors: ['#fc4c02', '#f97316', '#fb923c']
+            });
+          }, 300);
+        }
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : String(err));
       } finally {
@@ -272,11 +292,97 @@ export default function ActivityDetailPage() {
                 {isIST ? `${localRange} IST` : <>{localRange} · {istLabel}</>}
               </p>
             </div>
-            <Badge variant={getSportBadgeVariant(activity.type)}>{sportMeta.label}</Badge>
+            
+            <div className="flex flex-col items-end gap-2">
+              <Badge variant={getSportBadgeVariant(activity.type)}>{sportMeta.label}</Badge>
+              
+              {activity.pr_count ? (
+                (() => {
+                  const prEfforts = (activity.best_efforts || [])
+                    .filter(e => e.pr_rank === 1)
+                    .sort((a, b) => b.distance - a.distance);
+                  
+                  let prText = `${activity.pr_count} ${activity.pr_count === 1 ? 'PR' : 'PRs'}`;
+                  if (prEfforts.length > 0) {
+                    prText = prEfforts.length === 1 
+                      ? `PR: ${prEfforts[0].name}` 
+                      : `PR: ${prEfforts[0].name} +${prEfforts.length - 1}`;
+                  }
+
+                  return (
+                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-orange-500/30 text-orange-500 font-medium text-xs shadow-sm">
+                      <Trophy className="w-3.5 h-3.5" />
+                      {prText}
+                    </div>
+                  );
+                })()
+              ) : activity.achievement_count ? (
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-amber-500/30 text-amber-500 font-medium text-xs shadow-sm">
+                  <Star className="w-3.5 h-3.5" />
+                  {activity.achievement_count} {activity.achievement_count === 1 ? 'Achievement' : 'Achievements'}
+                </div>
+              ) : null}
+            </div>
+            
           </div>
         </motion.div>
 
 
+
+        {/* Personal Records Details */}
+        {activity.pr_count ? (
+          (() => {
+            const prs = (activity.best_efforts || []).filter(e => e.pr_rank === 1);
+            if (prs.length === 0) return null;
+
+            return (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="mb-8"
+              >
+                <h3 className="text-base font-semibold text-text-primary mb-3 flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-orange-500" />
+                  Official Personal Records
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {prs.map(pr => {
+                    const formatPRTime = (s: number) => {
+                      const h = Math.floor(s / 3600);
+                      const m = Math.floor((s % 3600) / 60);
+                      const sec = Math.round(s % 60);
+                      if (h > 0) return `${h}h ${m}m ${sec}s`;
+                      if (m > 0) return `${m}m ${sec}s`;
+                      return `${sec}s`;
+                    };
+                    const speed = pr.distance / pr.elapsed_time;
+
+                    return (
+                      <div key={pr.name} className="glass-panel rounded-2xl p-4 border border-orange-500/20 bg-orange-500/5 relative overflow-hidden">
+                        <div className="absolute -right-4 -top-4 opacity-[0.03] pointer-events-none">
+                          <Trophy className="w-24 h-24 text-orange-900" />
+                        </div>
+                        <div className="flex justify-between items-start mb-4">
+                          <span className="font-bold text-lg text-text-primary">{pr.name}</span>
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-orange-600 bg-orange-500/20 px-2 py-0.5 rounded-full">PR</span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs text-text-secondary uppercase tracking-wider">Time</span>
+                          <span className="font-mono text-xl font-semibold text-text-primary">{formatPRTime(pr.elapsed_time)}</span>
+                        </div>
+                        <div className="flex flex-col gap-1 mt-3">
+                          <span className="text-xs text-text-secondary uppercase tracking-wider">Pace</span>
+                          <span className="font-mono text-sm font-medium text-text-secondary">{formatPacePerKm(speed)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            );
+          })()
+        ) : null}
 
         {/* Key Stats Grid */}
         <motion.div

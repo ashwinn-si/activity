@@ -136,10 +136,10 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
   function cellColor(count: number): string {
     if (count === 0) return 'var(--border)';
     const t = Math.min(count / Math.max(maxCount, 1), 1);
-    if (t < 0.25) return '#3b82f625';
-    if (t < 0.5)  return '#3b82f655';
-    if (t < 0.75) return '#3b82f690';
-    return '#3b82f6';
+    if (t < 0.25) return '#fc4c0225';
+    if (t < 0.5)  return '#fc4c0255';
+    if (t < 0.75) return '#fc4c0290';
+    return '#fc4c02';
   }
 
   // Ref-based active date avoids stale closure comparisons
@@ -194,7 +194,7 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
               className="px-3 py-1 rounded-lg text-xs font-semibold transition-all duration-150"
               style={
                 yr === selectedYear
-                  ? { background: '#3b82f620', color: '#3b82f6', border: '1px solid #3b82f640' }
+                  ? { background: '#fc4c0220', color: '#fc4c02', border: '1px solid #fc4c0240' }
                   : { background: 'transparent', color: 'var(--text-secondary)', border: '1px solid transparent' }
               }
             >
@@ -270,7 +270,7 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
                       className="aspect-square rounded-[2px] cursor-default transition-opacity duration-100 hover:opacity-80"
                       style={{
                         background: cellColor(count),
-                        boxShadow: isToday ? '0 0 0 1.5px #3b82f6' : undefined,
+                        boxShadow: isToday ? '0 0 0 1.5px #fc4c02' : undefined,
                       }}
                     />
                   );
@@ -291,7 +291,7 @@ export function ActivityHeatmap({ activities }: ActivityHeatmapProps) {
             style={{
               width: 12,
               height: 12,
-              background: v === 0 ? 'var(--border)' : `#3b82f6${Math.round(v * 255).toString(16).padStart(2, '0')}`,
+              background: v === 0 ? 'var(--border)' : `#fc4c02${Math.round(v * 255).toString(16).padStart(2, '0')}`,
             }}
           />
         ))}

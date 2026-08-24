@@ -15,14 +15,14 @@ export interface SportMeta {
 
 /* Known Strava sport types */
 const KNOWN: Record<string, SportMeta> = {
-  Run:              { icon: Footprints,     hex: '#6366f1', label: 'Run',           paceLabel: 'Pace',  usePace: true  },
-  TrailRun:         { icon: Mountain,       hex: '#7c3aed', label: 'Trail Run',      paceLabel: 'Pace',  usePace: true  },
-  VirtualRun:       { icon: Footprints,     hex: '#818cf8', label: 'Virtual Run',    paceLabel: 'Pace',  usePace: true  },
-  Walk:             { icon: PersonStanding, hex: '#2dd4bf', label: 'Walk',           paceLabel: 'Pace',  usePace: true  },
-  Hike:             { icon: Mountain,       hex: '#10b981', label: 'Hike',           paceLabel: 'Pace',  usePace: true  },
-  Ride:             { icon: Bike,           hex: '#8b5cf6', label: 'Ride',           paceLabel: 'Speed', usePace: false },
-  VirtualRide:      { icon: Bike,           hex: '#a78bfa', label: 'Virtual Ride',   paceLabel: 'Speed', usePace: false },
-  EBikeRide:        { icon: Zap,            hex: '#c084fc', label: 'E-Bike',         paceLabel: 'Speed', usePace: false },
+  Run:              { icon: Footprints,     hex: '#fc4c02', label: 'Run',           paceLabel: 'Pace',  usePace: true  },
+  TrailRun:         { icon: Mountain,       hex: '#ea580c', label: 'Trail Run',      paceLabel: 'Pace',  usePace: true  },
+  VirtualRun:       { icon: Footprints,     hex: '#f97316', label: 'Virtual Run',    paceLabel: 'Pace',  usePace: true  },
+  Walk:             { icon: PersonStanding, hex: '#f59e0b', label: 'Walk',           paceLabel: 'Pace',  usePace: true  },
+  Hike:             { icon: Mountain,       hex: '#fb923c', label: 'Hike',           paceLabel: 'Pace',  usePace: true  },
+  Ride:             { icon: Bike,           hex: '#ef4444', label: 'Ride',           paceLabel: 'Speed', usePace: false },
+  VirtualRide:      { icon: Bike,           hex: '#f43f5e', label: 'Virtual Ride',   paceLabel: 'Speed', usePace: false },
+  EBikeRide:        { icon: Zap,            hex: '#f43f5e', label: 'E-Bike',         paceLabel: 'Speed', usePace: false },
   Swim:             { icon: Waves,          hex: '#0ea5e9', label: 'Swim',           paceLabel: 'Pace',  usePace: true  },
   Kayaking:         { icon: Sailboat,       hex: '#06b6d4', label: 'Kayak',          paceLabel: 'Speed', usePace: false },
   Rowing:           { icon: Sailboat,       hex: '#0891b2', label: 'Row',            paceLabel: 'Speed', usePace: false },

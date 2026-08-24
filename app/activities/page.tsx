@@ -6,7 +6,8 @@ import useStravaStore from '@/store/useStravaStore';
 import { ActivityCard } from '@/components/cards/ActivityCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { Filter, ChevronLeft, ChevronRight, RotateCw } from 'lucide-react';
+import { Filter, RotateCw } from 'lucide-react';
+import { useInView } from 'react-intersection-observer';
 
 const container = {
   animate: {
@@ -32,6 +33,16 @@ export default function ActivitiesPage() {
   const [sportFilter, setSportFilter] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'date' | 'distance' | 'elevation'>('date');
   const [currentPage, setCurrentPage] = useState(1);
+
+  const { ref } = useInView({
+    threshold: 0,
+    rootMargin: '400px',
+    onChange: (inView) => {
+      if (inView && currentPage < totalPages) {
+        setCurrentPage((prev) => prev + 1);
+      }
+    },
+  });
 
   useEffect(() => {
     fetchAll();
@@ -59,7 +70,7 @@ export default function ActivitiesPage() {
 
   const totalPages = Math.ceil(filteredActivities.length / ITEMS_PER_PAGE);
   const paginatedActivities = filteredActivities.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
+    0,
     currentPage * ITEMS_PER_PAGE
   );
 
@@ -178,45 +189,11 @@ export default function ActivitiesPage() {
               ))}
             </motion.div>
 
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center justify-center gap-2"
-              >
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="p-2.5 rounded-xl border border-white/5 bg-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 disabled:opacity-40 disabled:bg-transparent disabled:border-transparent disabled:cursor-not-allowed transition-all duration-300"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-
-                <div className="flex items-center gap-1.5">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-3.5 py-1.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
-                        currentPage === page
-                          ? 'bg-accent-ride/25 text-text-primary border border-accent-ride/40 shadow-sm'
-                          : 'bg-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 border border-transparent'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="p-2.5 rounded-xl border border-white/5 bg-white/5 text-text-secondary hover:text-text-primary hover:bg-white/10 disabled:opacity-40 disabled:bg-transparent disabled:border-transparent disabled:cursor-not-allowed transition-all duration-300"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              </motion.div>
+            {/* Infinite Scroll Trigger */}
+            {currentPage < totalPages && (
+              <div ref={ref} className="py-8 flex justify-center">
+                <div className="w-8 h-8 rounded-full border-2 border-accent-ride/20 border-t-accent-ride animate-spin" />
+              </div>
             )}
           </>
         ) : (
