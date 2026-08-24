@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistance, formatDuration, formatSpeed, formatPacePerKm } from '@/utils/formatters';
 import { PaceChart } from '@/components/charts/PaceChart';
 import { HeartRateChart } from '@/components/charts/HeartRateChart';
@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { KmSplitTable } from '@/components/KmSplitTable';
 import { BestEffortsTable } from '@/components/BestEffortsTable';
-import { ArrowLeft, GitCompare } from 'lucide-react';
+import { ArrowLeft, GitCompare, X } from 'lucide-react';
 import Link from 'next/link';
 import { getSportMeta, getSportBadgeVariant } from '@/utils/sportConfig';
 import { fmtActivityTimes } from '@/utils/timeUtils';
@@ -31,6 +31,14 @@ interface Activity {
   max_speed: number;
   average_heartrate?: number;
   max_heartrate?: number;
+  photos?: {
+    primary?: {
+      urls?: {
+        '100'?: string;
+        '600'?: string;
+      };
+    };
+  };
   [key: string]: unknown;
 }
 
@@ -164,6 +172,7 @@ export default function ActivityDetailPage() {
   const [streams, setStreams] = useState<Streams | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchActivity = async () => {
@@ -266,6 +275,8 @@ export default function ActivityDetailPage() {
             <Badge variant={getSportBadgeVariant(activity.type)}>{sportMeta.label}</Badge>
           </div>
         </motion.div>
+
+
 
         {/* Key Stats Grid */}
         <motion.div
@@ -422,7 +433,60 @@ export default function ActivityDetailPage() {
           </motion.div>
           );
         })()}
+
+        {/* Activity Photo at the Bottom */}
+        {activity.photos?.primary?.urls?.['600'] && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mt-8 overflow-hidden rounded-2xl border border-border shadow-sm cursor-pointer group relative"
+            onClick={() => setIsImageModalOpen(true)}
+          >
+            <img 
+              src={activity.photos.primary.urls['600']} 
+              alt={`Photo from ${activity.name}`}
+              className="w-full h-64 object-cover transition-transform duration-700 group-hover:scale-105"
+              loading="lazy"
+            />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center">
+              <span className="opacity-0 group-hover:opacity-100 text-white font-medium bg-black/60 px-5 py-2.5 rounded-full transition-opacity duration-300 backdrop-blur-md flex items-center gap-2 shadow-lg">
+                View Full Image
+              </span>
+            </div>
+          </motion.div>
+        )}
       </div>
+
+      {/* Fullscreen Image Modal */}
+      <AnimatePresence>
+        {isImageModalOpen && activity.photos?.primary?.urls?.['600'] && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsImageModalOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4 md:p-12 backdrop-blur-xl"
+          >
+            <button 
+              onClick={() => setIsImageModalOpen(false)}
+              className="absolute top-6 right-6 md:top-8 md:right-8 p-3 bg-white/10 hover:bg-white/25 text-white rounded-full transition-colors backdrop-blur-md z-10"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <motion.img
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              src={activity.photos.primary.urls['600']}
+              alt={`Full size photo from ${activity.name}`}
+              className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

@@ -20,8 +20,8 @@ export function Sidebar() {
   return (
     <aside className="hidden lg:flex flex-col w-64 glass-nav p-6 z-20">
       <Link href="/" className="mb-8 flex items-center gap-3 group">
-        <div className="p-2 rounded-xl bg-accent-ride/10 border border-accent-ride/20 shadow-[0_0_15px_rgba(139,92,246,0.15)] group-hover:shadow-[0_0_20px_rgba(139,92,246,0.25)] transition-all">
-          <Image src="/logo.png" alt="Strava Hub Logo" width={24} height={24} className="w-6 h-6" />
+        <div className="p-2 rounded-xl bg-accent-ride/10 border border-accent-ride/20 shadow-[0_0_15px_rgba(252,76,2,0.15)] group-hover:shadow-[0_0_20px_rgba(252,76,2,0.25)] transition-all">
+          <Image src="/logo.svg" alt="Strava Hub Logo" width={24} height={24} className="w-6 h-6" />
         </div>
         <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-text-primary to-text-secondary bg-clip-text text-transparent">
           Strava Hub
@@ -38,7 +38,7 @@ export function Sidebar() {
               href={item.href}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
                 isActive
-                  ? 'bg-accent-ride/20 text-text-primary border border-accent-ride/35 shadow-[0_0_12px_rgba(139,92,246,0.15)] font-semibold'
+                  ? 'bg-accent-ride/20 text-text-primary border border-accent-ride/35 shadow-[0_0_12px_rgba(252,76,2,0.15)] font-semibold'
                   : 'text-text-secondary hover:bg-white/5 hover:text-text-primary border border-transparent'
               }`}
             >

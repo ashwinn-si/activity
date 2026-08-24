@@ -15,27 +15,27 @@
   --tooltip-label: var(--text-secondary);
   --tooltip-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
 
-  /* Accent colors matching purple/indigo theme */
-  --accent-ride: #8b5cf6; /* Vivid Purple */
-  --accent-run: #6366f1; /* Vivid Indigo */
-  --accent-walk: #2dd4bf; /* Mint/Teal - goes perfectly with purple/indigo */
-  --accent-pr: #c084fc; /* Light Purple */
+  /* Accent colors matching Strava-orange theme */
+  --accent-ride: #f97316; /* Orange 500 */
+  --accent-run: #fc4c02; /* Strava Orange */
+  --accent-walk: #f59e0b; /* Amber 500 */
+  --accent-pr: #fb923c; /* Orange 400 */
   --strava: #fc4c02;
 
-  --color-primary: #8b5cf6;
-  --color-secondary: #6366f1;
+  --color-primary: #fc4c02;
+  --color-secondary: #f97316;
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --background: #0b0f19; /* Deep Blue-Black */
-  --surface: #0f1424; /* Deep Navy */
-  --border: #1a2238; /* Navy Gray */
-  --muted: #242f4d; /* Lighter Navy/Gray for inputs */
-  --text-primary: #f1f5f9; /* Soft White */
-  --text-secondary: #94a3b8; /* Slate / Muted Silver */
-  --text-muted: #64748b;
-  --tooltip-background: rgba(15, 20, 36, 0.96);
+  --background: #09090b; /* Zinc 950 */
+  --surface: #18181b; /* Zinc 900 */
+  --border: #27272a; /* Zinc 800 */
+  --muted: #3f3f46; /* Zinc 700 for inputs */
+  --text-primary: #fafafa; /* Zinc 50 */
+  --text-secondary: #a1a1aa; /* Zinc 400 */
+  --text-muted: #71717a; /* Zinc 500 */
+  --tooltip-background: rgba(24, 24, 27, 0.96);
   --tooltip-border: rgba(255, 255, 255, 0.08);
   --tooltip-text: var(--text-primary);
   --tooltip-label: var(--text-secondary);
@@ -82,8 +82,8 @@ body {
 
 /* Custom Text Highlight */
 ::selection {
-  background: rgba(139, 92, 246, 0.25);
-  color: #f1f5f9;
+  background: rgba(252, 76, 2, 0.25);
+  color: #fafafa;
 }
 
 /* Light mode glassmorphism */
@@ -111,24 +111,24 @@ body {
 
 /* Dark mode glassmorphism */
 :root[data-theme='dark'] .glass-panel {
-  background: rgba(15, 20, 36, 0.45);
+  background: rgba(24, 24, 27, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.04);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
 }
 
 :root[data-theme='dark'] .glass-panel-hover:hover {
-  background: rgba(15, 20, 36, 0.6);
+  background: rgba(24, 24, 27, 0.6);
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45);
 }
 
 :root[data-theme='dark'] .glass-nav {
-  background: rgba(11, 15, 25, 0.6);
+  background: rgba(9, 9, 11, 0.6);
   border-right: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 :root[data-theme='dark'] .glass-bottom-nav {
-  background: rgba(11, 15, 25, 0.6);
+  background: rgba(9, 9, 11, 0.6);
   border-top: 1px solid rgba(255, 255, 255, 0.03);
 }
 
