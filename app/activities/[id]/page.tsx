@@ -46,6 +46,7 @@ interface Activity {
     name: string;
     pr_rank: number | null;
     distance: number;
+    elapsed_time: number;
   }[];
   [key: string]: unknown;
 }
